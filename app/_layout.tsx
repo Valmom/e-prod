@@ -1,29 +1,63 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { Stack, useRouter, useSegments } from "expo-router";
+import { useEffect, useState } from "react";
+import { useColorScheme } from "react-native";
+import { AuthProvider, useAuth } from "../context/AuthContext";
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
+  return (
+    <AuthProvider>
+      <Layout />
+    </AuthProvider>
+  );
+}
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+function Layout() {
+  const { user } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === "dark" ? DarkTheme : DefaultTheme;
+
+  const [isNavigationReady, setIsNavigationReady] = useState(false);
+  const [splashShown, setSplashShown] = useState(false);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setIsNavigationReady(true);
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    if (!isNavigationReady) return;
+
+    if (!splashShown && segments[0] !== "splash") {
+      router.replace("/splash");
+      setSplashShown(true);
+      return;
+    }
+    
+    if (segments[0] === "splash") return;
+
+    const inAuthGroup = segments[0] === "login";
+
+    if (!user && !inAuthGroup) {
+      router.replace("/login");
+    } else if (user && inAuthGroup) {
+      router.replace("/dashboard");
+    }
+  }, [user, segments, isNavigationReady]);
+
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
+    <ThemeProvider value={theme}>
+      <Stack
+        screenOptions={{
+          animation: "fade", // outras opções: 'fade', 'slide_from_bottom', etc.
+          headerShown: false, // se você quiser esconder o cabeçalho padrão
+        }}
+      />
     </ThemeProvider>
   );
 }
