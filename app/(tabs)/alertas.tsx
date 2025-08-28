@@ -2,7 +2,8 @@ import ScreenLayout from "@/components/ScreenLayout";
 import { MaterialIcons } from '@expo/vector-icons';
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
-import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
+import { Dimensions, FlatList, Platform, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
+
 
 const alertas = [
   {
@@ -39,6 +40,7 @@ const alertas = [
   },  
 ];
 
+const screenWidth = Dimensions.get("window").width;
 const getCardTheme = (status: string) => {
   switch (status) {
     case "Recusado":
@@ -158,7 +160,8 @@ export default function Alertas() {
 
 const styles = StyleSheet.create({
   listContainer: {
-    padding: 16,
+    paddingHorizontal: screenWidth > 768 ? 10 : 16, 
+    paddingTop: 10,
     paddingBottom: Platform.select({
       android: 48,
       ios: 100,
