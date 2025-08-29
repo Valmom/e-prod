@@ -1,60 +1,45 @@
 import ScreenLayout from "@/components/ScreenLayout";
+import { api } from "@/services/api";
 import { MaterialIcons } from '@expo/vector-icons';
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Dimensions, FlatList, Platform, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
-import { api } from "../../services/api";
+import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
 
-type AlertaAPI = {
-  id?: string | null;
-  tipoAlerta?: string | null;
-  prefixoId?: string | null;
-  prefixo?: string | null;
-  dataOcorrencia: string;
-  status: string;
-  statusCor?: string | null;
-  classificacaoId?: string | null;
-  classificacao?: string | null;
-};
-
-const screenWidth = Dimensions.get("window").width;
-
-const getCardTheme = (statusCor?: string | null) => {
-  switch (statusCor) {
+const getCardTheme = (status: string) => {
+  switch (status) {
     case "Recusado":
       return {
-        backgroundColor: "#FFF5F5",
+        backgroundColor: "#FFF5F5",     // vermelho claro
         borderColor: "#FEE2E2",
-        textColor: "#B91C1C",
-        buttonColor: "#DC2626",
+        textColor: "#B91C1C",           // vermelho escuro
+        buttonColor: "#DC2626",         // botão vermelho
         buttonTextColor: "#fff",
-        iconColor: "#EF4444",
+        iconColor: "#EF4444",        
       };
     case "Não Respondido":
       return {
-        backgroundColor: "#FFFBEB",
+        backgroundColor: "#FFFBEB",     // amarelo claro
         borderColor: "#FEF3C7",
-        textColor: "#92400E",
-        buttonColor: "#F59E0B",
+        textColor: "#92400E",           // laranja escuro
+        buttonColor: "#F59E0B",         // botão laranja
         buttonTextColor: "#fff",
         iconColor: "#F97316",
       };
     case "Aguardando Resposta":
       return {
-        backgroundColor: "#EFF6FF",
+        backgroundColor: "#EFF6FF",     // azul claro
         borderColor: "#DBEAFE",
-        textColor: "#1E40AF",
-        buttonColor: "#3B82F6",
+        textColor: "#1E40AF",           // azul escuro
+        buttonColor: "#3B82F6",         // botão azul
         buttonTextColor: "#fff",
         iconColor: "#2563EB",
       };
     default:
       return {
-        backgroundColor: "#F5F5F5",
+        backgroundColor: "#F5F5F5",     // cinza claro
         borderColor: "#E5E5E5",
         textColor: "#404040",
-        buttonColor: "#737373",
+        buttonColor: "#737373",         // botão cinza
         buttonTextColor: "#fff",
         iconColor: "#525252",
       };
@@ -65,84 +50,73 @@ export default function Alertas() {
   const theme = useColorScheme();
   const isDark = theme === "dark";
   const router = useRouter();
-  const tabBarHeight = useBottomTabBarHeight();
-
-  const [alert, setAlert] = useState<AlertaAPI[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchAlertas = async () => {
-    setError(null);
-    setLoading(true);
-
-    try {
-      
-
-      const response = await api.get('/api/v1/alertas/table-alerta');
-      if (!response.status.toString().startsWith("2")) {
-        const text = await response.statusText;
-        console.error("❌ Resposta não OK:", text);
-        throw new Error(`Status ${response.status}`);
-      }
-      setAlert(response.data as AlertaAPI[]);
-    } catch (err: any) {
-      console.error("❌ Erro ao buscar alertas:", err.message || err);
-      setError("Não foi possível carregar os alertas. Verifique URL, headers ou conexão.");
-      setAlert([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const [alertas, setAlertas] = useState<any[]>([]);
+  
   useEffect(() => {
+    const fetchAlertas = async () => {
+      try {
+        const response = await api.get('/alertas/table-alerta');
+        setAlertas(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar alertas:", error);
+      }
+    }
+    
     fetchAlertas();
   }, []);
 
-  const renderItem = ({ item }: { item: AlertaAPI }) => {
-    const themeCard = getCardTheme(item.statusCor ?? "");
+  const renderItem = ({ item }: any) => {
+    const theme = getCardTheme(item.status);
+    
     return (
-      <View
-        style={[
-          styles.card,
-          {
-            backgroundColor: themeCard.backgroundColor,
-            borderColor: themeCard.borderColor,
-            shadowColor: isDark ? "#000" : themeCard.textColor,
-          },
-        ]}
-      >
+      <View style={[
+        styles.card, 
+        { 
+          backgroundColor: theme.backgroundColor,
+          borderColor: theme.borderColor,
+          shadowColor: isDark ? '#000' : theme.textColor,
+        }
+      ]}>
         <View style={styles.cardHeader}>
-          <MaterialIcons name="warning" size={24} color={themeCard.iconColor} style={styles.icon} />
-          <View style={[styles.badge, { backgroundColor: themeCard.buttonColor }]}>
-            <Text style={styles.badgeText}>{item.status ?? "Sem status"}</Text>
+          <MaterialIcons 
+            name={item.icone} 
+            size={24} 
+            color={theme.iconColor} 
+            style={styles.icon}
+          />
+          <View style={[styles.badge, { backgroundColor: theme.buttonColor }]}>
+            <Text style={styles.badgeText}>
+              {item.status}
+            </Text>
           </View>
         </View>
-
-        <Text style={[styles.descricao, { color: themeCard.textColor }]}>
-          {(item.tipoAlerta ?? "Sem tipo") + " - " + (item.prefixo ?? "Sem prefixo")}
+        
+        <Text style={[styles.descricao, { color: theme.textColor }]}>
+          {item.classificacao}
         </Text>
-
+        
         <View style={styles.infoContainer}>
           <View style={styles.infoRow}>
-            <MaterialIcons name="calendar-today" size={16} color={themeCard.textColor} />
-            <Text style={[styles.infoText, { color: themeCard.textColor }]}>
-              {new Date(item.dataOcorrencia).toLocaleDateString()}
+            <MaterialIcons name="group" size={16} color={theme.textColor} />
+            <Text style={[styles.infoText, { color: theme.textColor }]}>
+              {item.prefixo}
             </Text>
           </View>
           <View style={styles.infoRow}>
-            <MaterialIcons name="label" size={16} color={themeCard.textColor} />
-            <Text style={[styles.infoText, { color: themeCard.textColor }]}>
-              {item.classificacao ?? "Sem classificação"}
+            <MaterialIcons name="calendar-today" size={16} color={theme.textColor} />
+            <Text style={[styles.infoText, { color: theme.textColor }]}>
+              {item.dataOcorrencia}
             </Text>
           </View>
         </View>
-
+        
         <TouchableOpacity
-          style={[styles.botao, { backgroundColor: themeCard.buttonColor }]}
-          onPress={() => router.push({ pathname: "/dashboard", params: { id: item.id ?? "" } })}
+          style={[styles.botao, { backgroundColor: theme.buttonColor }]}
+          // Alteração aqui: navegando para a página "Historico" e passando o ID como parâmetro
+          onPress={() => router.push({ pathname: "/historico", params: { id: item.id } })}
         >
           <Text style={styles.botaoTexto}>Visualizar</Text>
-          <MaterialIcons name="chevron-right" size={20} color={themeCard.buttonTextColor} />
+          <MaterialIcons name="chevron-right" size={20} color={theme.buttonTextColor} />
         </TouchableOpacity>
       </View>
     );
@@ -150,12 +124,9 @@ export default function Alertas() {
 
   return (
     <ScreenLayout title="Alertas">
-      {loading && <Text style={{ textAlign: "center", marginVertical: 16 }}>Carregando alertas...</Text>}
-      {error && <Text style={{ textAlign: "center", marginVertical: 16, color: "red" }}>{error}</Text>}
-
       <FlatList
-        data={alert}
-        keyExtractor={(item) => item.id ?? Math.random().toString()}
+        data={alertas}
+        keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
@@ -167,12 +138,9 @@ export default function Alertas() {
 
 const styles = StyleSheet.create({
   listContainer: {
-    paddingHorizontal: screenWidth > 768 ? 10 : 16,
-    paddingTop: 10,
-    width: screenWidth - 40,
-    minHeight: "100%",
+    padding: 16,
     paddingBottom: Platform.select({
-      android: 80,
+      android: 48,
       ios: 100,
     }),
   },
@@ -190,9 +158,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
   icon: {
@@ -204,14 +172,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   badgeText: {
-    color: "#fff",
-    fontWeight: "600",
+    color: '#fff',
+    fontWeight: '600',
     fontSize: 12,
-    textTransform: "uppercase",
+    textTransform: 'uppercase',
   },
   descricao: {
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: '500',
     marginBottom: 12,
     lineHeight: 22,
   },
@@ -219,8 +187,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 6,
   },
   infoText: {
@@ -228,15 +196,15 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   botao: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     borderRadius: 8,
     padding: 12,
   },
   botaoTexto: {
-    color: "#fff",
-    fontWeight: "600",
+    color: '#fff',
+    fontWeight: '600',
     fontSize: 14,
   },
   separator: {

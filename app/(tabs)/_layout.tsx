@@ -119,33 +119,42 @@ export default function TabsLayout() {
                     ]}
                   >
                     <AntDesign name="home" size={32} color="#fff" />
-                  </View>
-                </TouchableOpacity>
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="documentos"
-            options={{
-              tabBarIcon: ({ focused, color, size }) => (
-                <CircleIcon focused={focused} color={color}>
-                  <AntDesign name="filetext1" size={size} color="#fff" />
-                </CircleIcon>
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="perfil"
-            options={{
-              tabBarIcon: ({ focused, color, size }) => (
-                <CircleIcon focused={focused} color={color}>
-                  <Ionicons name="person-circle-outline" size={size} color="#fff" />
-                </CircleIcon>
-              ),
-            }}
-          />
-        </Tabs>
-      </ThemeProvider>
+                  </TouchableOpacity>
+                ),
+              }}
+            />
+            <Tabs.Screen
+              name="documentos"
+              options={{
+                tabBarIcon: ({ focused, color, size }) => (
+                  <CircleIcon focused={focused} color={color}>
+                    <AntDesign name="filetext1" size={size} color="#fff" />
+                  </CircleIcon>
+                ),
+              }}
+            />
+            <Tabs.Screen
+              name="perfil"
+              options={{
+                tabBarIcon: ({ focused, color, size }) => (
+                  <CircleIcon focused={focused} color={color}>
+                    <Ionicons name="person-circle-outline" size={size} color="#fff" />
+                  </CircleIcon>
+                ),
+              }}
+            />
+            <Tabs.Screen
+              name="historico"              
+              options={{
+                tabBarIcon: ({ focused, color, size }) => (
+                  <CircleIcon focused={focused} color={color}>
+                    <Ionicons name="person-circle-outline" size={size} color="#fff" />
+                  </CircleIcon>
+                ),
+              }}
+            />            
+          </Tabs>
+        </ThemeProvider>
     </>
   );
 }
