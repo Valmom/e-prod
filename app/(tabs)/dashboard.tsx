@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { G, Line, Polyline, Rect, Text as SvgText } from "react-native-svg";
 import ScreenLayout from "../../components/ScreenLayout";
 
@@ -12,9 +12,23 @@ export default function Dashboard() {
 
   useEffect(() => {
     setDailyData([60, 20, 12, 6, 2]);
-    setDailyLabels(["0 a 1 Hora","1 a 2 Horas","2 a 4 Horas","4 a 24 Horas","Acima de 24 Horas"]);
+    setDailyLabels([
+      "0 a 1 Hora",
+      "1 a 2 Horas",
+      "2 a 4 Horas",
+      "4 a 24 Horas",
+      "Acima de 24 Horas",
+    ]);
+
     setAccumulatedData([55, 25, 10, 7, 3]);
-    setAccumulatedLabels(["0 a 1 Hora","1 a 2 Horas","2 a 4 Horas","4 a 24 Horas","Acima de 24 Horas"]);
+    setAccumulatedLabels([
+      "0 a 1 Hora",
+      "1 a 2 Horas",
+      "2 a 4 Horas",
+      "4 a 24 Horas",
+      "Acima de 24 Horas",
+    ]);
+
     setLoading(false);
   }, []);
 
@@ -23,9 +37,8 @@ export default function Dashboard() {
   const barWidth = 60;
   const spacing = (chartWidth - dailyData.length * barWidth) / (dailyData.length + 1);
   const chartHeight = 200;
-  const cardPadding = 20;
-  const svgWidth = chartWidth - cardPadding * 2;
 
+  // Primeiro gráfico vertical
   const renderVerticalChart = () => {
     const maxValue = 70;
     const currentValue = 32;
@@ -33,45 +46,145 @@ export default function Dashboard() {
     const atribuidoValue = 55;
     const chartInnerHeight = 150;
 
+    // Gerar marcadores do eixo Y de 0 a 70
+    const yAxisMarkers = [];
+    for (let i = 0; i <= 7; i++) {
+      yAxisMarkers.push(i * 10); // 0, 10, 20, 30, 40, 50, 60, 70
+    }
+
     return (
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Performance de UPS: Relatório MA-SLZ-F030M</Text>
         <Text style={styles.cardText}>Indicadores de rendimento</Text>
+
         <View style={{ alignItems: "center", marginTop: 10 }}>
-          <Svg height={220} width={svgWidth}>
-            <Line x1={40} y1={20} x2={40} y2={20 + chartInnerHeight} stroke="#e0e0e0" strokeWidth={2} />
-            {[0, 10, 20, 30, 40, 50, 60, 70].map((value) => {
-              const y = 20 + chartInnerHeight - (value / maxValue) * chartInnerHeight;
+          <Svg height={220} width={chartWidth}>
+            {/* Eixo Y */}
+            <Line
+              x1={40}
+              y1={20}
+              x2={40}
+              y2={20 + chartInnerHeight}
+              stroke="#e0e0e0"
+              strokeWidth={2}
+            />
+
+            {/* Marcadores do eixo Y */}
+            {yAxisMarkers.map((value) => {
+              const yPosition = 20 + chartInnerHeight - (value / maxValue) * chartInnerHeight;
               return (
-                <G key={value}>
-                  <Line x1={35} y1={y} x2={45} y2={y} stroke="#666" strokeWidth={1} />
-                  <SvgText x={30} y={y + 4} fontSize="12" fill="#666" fontWeight="600" textAnchor="end">{value}</SvgText>
+                <G key={`y-marker-${value}`}>
+                  {/* Linha de grade */}
+                  <Line
+                    x1={40}
+                    y1={yPosition}
+                    x2={chartWidth - 20}
+                    y2={yPosition}
+                    stroke="#f0f0f0"
+                    strokeWidth={1}
+                  />
+                  {/* Texto do marcador */}
+                  <SvgText
+                    x={35}
+                    y={yPosition + 4}
+                    fontSize="10"
+                    fill="#666"
+                    textAnchor="end"
+                  >
+                    {value}
+                  </SvgText>
                 </G>
               );
             })}
-            <Line x1={50} y1={20 + chartInnerHeight - (metaValue / maxValue) * chartInnerHeight} x2={svgWidth - 20} y2={20 + chartInnerHeight - (metaValue / maxValue) * chartInnerHeight} stroke="#FFC107" strokeWidth={2} strokeDasharray="4,4"/>
-            <SvgText x={svgWidth - 15} y={20 + chartInnerHeight - (metaValue / maxValue) * chartInnerHeight - 5} fontSize="14" fill="#FFC107" fontWeight="bold" textAnchor="end">Meta: 42</SvgText>
-            <Line x1={50} y1={20 + chartInnerHeight - (atribuidoValue / maxValue) * chartInnerHeight} x2={svgWidth - 20} y2={20 + chartInnerHeight - (atribuidoValue / maxValue) * chartInnerHeight} stroke="#4CAF50" strokeWidth={2} strokeDasharray="4,4"/>
-            <SvgText x={svgWidth - 15} y={20 + chartInnerHeight - (atribuidoValue / maxValue) * chartInnerHeight - 5} fontSize="14" fill="#4CAF50" fontWeight="bold" textAnchor="end">Atribuído: 55</SvgText>
-            <Rect x={svgWidth / 2 - 40} y={20 + chartInnerHeight - (currentValue / maxValue) * chartInnerHeight} width={80} height={(currentValue / maxValue) * chartInnerHeight} fill="#F44336" rx={6} />
-            <SvgText x={svgWidth / 2} y={20 + chartInnerHeight - (currentValue / maxValue) * chartInnerHeight - 15} fontSize="16" fill="#F44336" fontWeight="bold" textAnchor="middle">{currentValue}</SvgText>
-            <SvgText x={15} y={20 + chartInnerHeight / 2} fontSize="14" fill="#333" fontWeight="bold" textAnchor="middle" transform={`rotate(-90, 15, ${20 + chartInnerHeight / 2})`}>UPS</SvgText>
+
+            {/* Barra atual */}
+            <Rect
+              x={chartWidth / 2 - 40}
+              y={20 + chartInnerHeight - (currentValue / maxValue) * chartInnerHeight}
+              width={80}
+              height={(currentValue / maxValue) * chartInnerHeight}
+              fill="#F44336"
+              rx={6}
+            />
+            <SvgText
+              x={chartWidth / 2}
+              y={20 + chartInnerHeight - (currentValue / maxValue) * chartInnerHeight - 15}
+              fontSize="16"
+              fill="#F44336"
+              fontWeight="bold"
+              textAnchor="middle"
+            >
+              {currentValue}
+            </SvgText>
+
+            {/* Linha Meta */}
+            <Line
+              x1={50}
+              y1={20 + chartInnerHeight - (metaValue / maxValue) * chartInnerHeight}
+              x2={chartWidth - 20}
+              y2={20 + chartInnerHeight - (metaValue / maxValue) * chartInnerHeight}
+              stroke="#FFC107"
+              strokeWidth={2}
+              strokeDasharray="4,4"
+            />
+            <SvgText
+              x={chartWidth - 15}
+              y={20 + chartInnerHeight - (metaValue / maxValue) * chartInnerHeight - 5}
+              fontSize="14"
+              fill="#FFC107"
+              fontWeight="bold"
+              textAnchor="end"
+            >
+              {metaValue}
+            </SvgText>
+
+            {/* Linha Atribuído */}
+            <Line
+              x1={50}
+              y1={20 + chartInnerHeight - (atribuidoValue / maxValue) * chartInnerHeight}
+              x2={chartWidth - 20}
+              y2={20 + chartInnerHeight - (atribuidoValue / maxValue) * chartInnerHeight}
+              stroke="#4CAF50"
+              strokeWidth={2}
+              strokeDasharray="4,4"
+            />
+            <SvgText
+              x={chartWidth - 15}
+              y={20 + chartInnerHeight - (atribuidoValue / maxValue) * chartInnerHeight - 5}
+              fontSize="14"
+              fill="#4CAF50"
+              fontWeight="bold"
+              textAnchor="end"
+            >
+              {atribuidoValue}
+            </SvgText>
           </Svg>
         </View>
+
         <View style={styles.chartLegend}>
-          <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: "#F44336" }]} /><Text style={styles.legendText}>Executado: 32 UPS</Text></View>
-          <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: "#FFC107" }]} /><Text style={styles.legendText}>Meta: 42 UPS</Text></View>
-          <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: "#4CAF50" }]} /><Text style={styles.legendText}>Atribuído: 55 UPS</Text></View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#F44336" }]} />
+            <Text style={styles.legendText}>Executado: {currentValue}</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#FFC107" }]} />
+            <Text style={styles.legendText}>Meta: {metaValue}</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#4CAF50" }]} />
+            <Text style={styles.legendText}>Atribuído</Text>
+          </View>
         </View>
       </View>
     );
   };
 
+  // Segundo gráfico com múltiplas barras
   const renderMultiBarChart = () => {
     const maxValue = 70;
     const metaValue = 42;
     const chartInnerHeight = 150;
-    const chartInnerWidth = svgWidth - 60;
+
     const barData = [
       { valor: 32, atribuido: 55, label: "A" },
       { valor: 22, atribuido: 10, label: "B" },
@@ -82,65 +195,137 @@ export default function Dashboard() {
       { valor: 50, atribuido: 22, label: "G" },
       { valor: 39, atribuido: 57, label: "H" }
     ];
+
+    const chartInnerWidth = chartWidth - 80;
     const barSpacing = chartInnerWidth / barData.length;
     const barWidth = Math.min(barSpacing * 0.7, 35);
-    const atribuidoPoints = barData.map((data, index) => {
-      const x = 50 + index * barSpacing + barSpacing / 2;
-      const y = 20 + chartInnerHeight - (data.atribuido / maxValue) * chartInnerHeight;
-      return { x, y };
-    });
+
+    const atribuidoPoints = barData.map((data, index) => ({
+      x: 50 + index * barSpacing + barSpacing / 2,
+      y: 20 + chartInnerHeight - (data.atribuido / maxValue) * chartInnerHeight
+    }));
+
+    // Gerar marcadores do eixo Y de 0 a 70
+    const yAxisMarkers = [];
+    for (let i = 0; i <= 7; i++) {
+      yAxisMarkers.push(i * 10); // 0, 10, 20, 30, 40, 50, 60, 70
+    }
 
     return (
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Performance de UPS: Comparativo por Equipe</Text>
         <Text style={styles.cardText}>Múltiplos indicadores de rendimento</Text>
+
         <View style={{ alignItems: "center", marginTop: 10 }}>
-          <Svg height={240} width={svgWidth}>
+          <Svg height={240} width={chartWidth}>
+            {/* Eixo Y */}
             <Line x1={40} y1={20} x2={40} y2={20 + chartInnerHeight} stroke="#e0e0e0" strokeWidth={2} />
-            {[0, 10, 20, 30, 40, 50, 60, 70].map((value) => {
-              const y = 20 + chartInnerHeight - (value / maxValue) * chartInnerHeight;
+
+            {/* Marcadores do eixo Y */}
+            {yAxisMarkers.map((value) => {
+              const yPosition = 20 + chartInnerHeight - (value / maxValue) * chartInnerHeight;
               return (
-                <G key={value}>
-                  <Line x1={35} y1={y} x2={45} y2={y} stroke="#666" strokeWidth={1} />
-                  <SvgText x={30} y={y + 4} fontSize="12" fill="#666" fontWeight="600" textAnchor="end">{value}</SvgText>
+                <G key={`y-marker-${value}`}>
+                  {/* Linha de grade */}
+                  <Line
+                    x1={40}
+                    y1={yPosition}
+                    x2={chartWidth - 20}
+                    y2={yPosition}
+                    stroke="#f0f0f0"
+                    strokeWidth="1"
+                  />
+                  {/* Texto do marcador */}
+                  <SvgText
+                    x={35}
+                    y={yPosition + 4}
+                    fontSize="10"
+                    fill="#666"
+                    textAnchor="end"
+                  >
+                    {value}
+                  </SvgText>
                 </G>
               );
             })}
-            <Line x1={50} y1={20 + chartInnerHeight - (metaValue / maxValue) * chartInnerHeight} x2={svgWidth - 20} y2={20 + chartInnerHeight - (metaValue / maxValue) * chartInnerHeight} stroke="#FFC107" strokeWidth={3}/>
-            <SvgText x={svgWidth - 15} y={20 + chartInnerHeight - (metaValue / maxValue) * chartInnerHeight - 5} fontSize="14" fill="#FFC107" fontWeight="bold" textAnchor="end">Meta: 42</SvgText>
-            <Polyline points={atribuidoPoints.map(point => `${point.x},${point.y}`).join(' ')} fill="none" stroke="#4CAF50" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"/>
-            {atribuidoPoints.map((point, index) => (
-              <G key={`point-${index}`}>
-                <Rect x={point.x - 4} y={point.y - 4} width={8} height={8} fill="#4CAF50" rx={4}/>
-                <SvgText x={point.x} y={point.y - 10} fontSize="11" fill="#4CAF50" fontWeight="600" textAnchor="middle">{barData[index].atribuido}</SvgText>
-              </G>
-            ))}
+
+            {/* Barras coloridas */}
             {barData.map((data, index) => {
               const x = 50 + index * barSpacing + barSpacing / 2 - barWidth / 2;
               const barHeight = (data.valor / maxValue) * chartInnerHeight;
               const barY = 20 + chartInnerHeight - barHeight;
               const barColor = data.valor >= metaValue ? "#007AFF" : "#F44336";
-              const textColor = barColor;
+
               return (
                 <G key={`bar-${index}`}>
-                  <Rect x={x} y={barY} width={barWidth} height={barHeight} fill={barColor} rx={4}/>
-                  <SvgText x={x + barWidth / 2} y={barY - 10} fontSize="12" fill={textColor} fontWeight="bold" textAnchor="middle">{data.valor}</SvgText>
-                  <SvgText x={x + barWidth / 2} y={20 + chartInnerHeight + 20} fontSize="11" fill="#333" fontWeight="600" textAnchor="middle">{data.label}</SvgText>
+                  <Rect x={x} y={barY} width={barWidth} height={barHeight} fill={barColor} rx={4} />
+                  <SvgText x={x + barWidth / 2} y={barY - 10} fontSize="12" fill={barColor} fontWeight="bold" textAnchor="middle">
+                    {data.valor}
+                  </SvgText>
+                  <SvgText x={x + barWidth / 2} y={20 + chartInnerHeight + 20} fontSize="11" fill="#333" fontWeight="600" textAnchor="middle">
+                    {data.label}
+                  </SvgText>
                 </G>
               );
             })}
-            <SvgText x={15} y={20 + chartInnerHeight / 2} fontSize="14" fill="#333" fontWeight="bold" textAnchor="middle" transform={`rotate(-90, 15, ${20 + chartInnerHeight / 2})`}>UPS</SvgText>
+
+            {/* Linha Meta */}
+            <Line
+              x1={50}
+              y1={20 + chartInnerHeight - (metaValue / maxValue) * chartInnerHeight}
+              x2={chartWidth - 20}
+              y2={20 + chartInnerHeight - (metaValue / maxValue) * chartInnerHeight}
+              stroke="#FFC107"
+              strokeWidth={3}
+            />
+            <SvgText
+              x={chartWidth - 15}
+              y={20 + chartInnerHeight - (metaValue / maxValue) * chartInnerHeight - 5}
+              fontSize="14"
+              fill="#FFC107"
+              fontWeight="bold"
+              textAnchor="end"
+            >
+              {metaValue}
+            </SvgText>
+
+            {/* Linha contínua Atribuído */}
+            <Polyline
+              points={atribuidoPoints.map(p => `${p.x},${p.y}`).join(" ")}
+              fill="none"
+              stroke="#4CAF50"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {atribuidoPoints.map((point, index) => (
+              <G key={`point-${index}`}>
+                <Rect x={point.x - 4} y={point.y - 4} width={8} height={8} fill="#4CAF50" rx={4} />
+                <SvgText x={point.x} y={point.y - 10} fontSize="11" fill="#4CAF50" fontWeight="600" textAnchor="middle">
+                  {barData[index].atribuido}
+                </SvgText>
+              </G>
+            ))}
           </Svg>
         </View>
+
         <View style={styles.chartLegend}>
-          <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: "#007AFF" }]} /><Text style={styles.legendText}>Acima da Meta (≥42)</Text></View>
-          <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: "#F44336" }]} /><Text style={styles.legendText}>Abaixo da Meta</Text></View>
-          <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: "#FFC107" }]} /><Text style={styles.legendText}>Meta: 42 UPS</Text></View>
-          <View style={styles.legendItem}><View style={[styles.legendColor, { backgroundColor: "#4CAF50" }]} /><Text style={styles.legendText}>Atribuído</Text></View>
-        </View>
-        <View style={styles.barLabels}>
-          <Text style={styles.barLabelText}>A: Equipe 1 | B: Equipe 2 | C: Equipe 3 | D: Equipe 4</Text>
-          <Text style={styles.barLabelText}>E: Equipe 5 | F: Equipe 6 | G: Equipe 7 | H: Equipe 8</Text>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#007AFF" }]} />
+            <Text style={styles.legendText}>Acima da Meta (≥{metaValue})</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#F44336" }]} />
+            <Text style={styles.legendText}>Abaixo da Meta</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#FFC107" }]} />
+            <Text style={styles.legendText}>Meta: {metaValue}</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#4CAF50" }]} />
+            <Text style={styles.legendText}>Atribuído</Text>
+          </View>
         </View>
       </View>
     );
@@ -151,15 +336,40 @@ export default function Dashboard() {
       <Text style={styles.cardTitle}>{title}</Text>
       <Text style={styles.cardText}>Em Percentual %</Text>
       <View style={{ alignItems: "center" }}>
-        <Svg height={chartHeight + 60} width={svgWidth}>
+        <Svg height={chartHeight + 60} width={chartWidth}>
           {data.map((value, index) => {
             const barHeight = (value / 100) * chartHeight;
             const x = spacing + index * (barWidth + spacing);
+
             return (
               <G key={index}>
-                <Rect x={x} y={chartHeight - barHeight} width={barWidth} height={barHeight} fill="#007AFF" rx={6}/>
-                <SvgText x={x + barWidth / 2} y={chartHeight - barHeight - 5} fontSize="12" fill="#333" fontWeight="bold" textAnchor="middle">{value}%</SvgText>
-                <SvgText x={x + barWidth / 2} y={chartHeight + 20} fontSize="10" fill="#333" textAnchor="middle">{labels[index]}</SvgText>
+                <Rect
+                  x={x}
+                  y={chartHeight - barHeight}
+                  width={barWidth}
+                  height={barHeight}
+                  fill="#007AFF"
+                  rx={6}
+                />
+                <SvgText
+                  x={x + barWidth / 2}
+                  y={chartHeight - barHeight - 5}
+                  fontSize="12"
+                  fill="#333"
+                  fontWeight="bold"
+                  textAnchor="middle"
+                >
+                  {value}%
+                </SvgText>
+                <SvgText
+                  x={x + barWidth / 2}
+                  y={chartHeight + 20}
+                  fontSize="10"
+                  fill="#333"
+                  textAnchor="middle"
+                >
+                  {labels[index]}
+                </SvgText>
               </G>
             );
           })}
@@ -182,40 +392,60 @@ export default function Dashboard() {
 
   return (
     <ScreenLayout title="">
-      <View style={{ alignItems: "center", marginTop: 10, marginBottom: 20 }}>
+      <View 
+        style={{  
+          alignItems: "center",  
+          marginTop: 10,    
+          paddingBottom: 20, 
+        }}
+      >
         <Text style={{ fontSize: 22, fontWeight: "700" }}>Dashboard</Text>
       </View>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
-        <View style={styles.topCardsContainer}>
-          <View style={[styles.topCard, { backgroundColor: "#007AFF", marginRight: 5, height: 170, padding: 16 }]}>
+
+      <ScrollView 
+        style={{ flex: 1 }}   
+        contentContainerStyle={{              
+          paddingBottom: Platform.select({
+            android: 80,
+            ios: 100, 
+          }),     
+        }}
+      >
+        {/* Top 4 cards */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginHorizontal: 10, marginBottom: 20 }}>
+          <View style={[styles.topCard, { backgroundColor: "#007AFF" }]}>
             <Text style={styles.topCardTitle}>Total de alertas gerados</Text>
             <View style={{ flex: 1, justifyContent: "center" }}>
-              <Text style={[styles.cardText, { fontSize: 18, fontWeight: "700", color: "#fff", marginBottom: 0 }]}>210</Text>
+              <Text style={[styles.topCardValue, { color: "#fff" }]}>210</Text>
             </View>
-            <Text style={[styles.cardLegend, { color: "#fff" }]}>12% em relação ao mês anterior</Text>
+            <Text style={[styles.topCardLegend, { color: "#fff" }]}>12% em relação ao mês anterior</Text>
           </View>
-          <View style={[styles.topCard, { backgroundColor: "#4CAF50", marginRight: 5, height: 170, padding: 16 }]}>
+
+          <View style={[styles.topCard, { backgroundColor: "#4CAF50" }]}>
             <Text style={styles.topCardTitle}>% de atendimento dentro do prazo</Text>
             <View style={{ flex: 1, justifyContent: "center" }}>
-              <Text style={[styles.cardText, { fontSize: 18, fontWeight: "700", color: "#fff", marginBottom: 0 }]}>80%</Text>
+              <Text style={[styles.topCardValue, { color: "#fff" }]}>80%</Text>
             </View>
-            <Text style={[styles.cardLegend, { color: "#fff" }]}>5% acima da meta</Text>
+            <Text style={[styles.topCardLegend, { color: "#fff" }]}>5% acima da meta</Text>
           </View>
-          <View style={[styles.topCard, { backgroundColor: "#FFC107", marginRight: 5, height: 170, padding: 16 }]}>
+
+          <View style={[styles.topCard, { backgroundColor: "#FFC107" }]}>
             <Text style={styles.topCardTitle}>Alertas em aberto</Text>
             <View style={{ flex: 1, justifyContent: "center" }}>
-              <Text style={[styles.cardText, { fontSize: 18, fontWeight: "700", color: "#fff", marginBottom: 0 }]}>20</Text>
+              <Text style={[styles.topCardValue, { color: "#fff" }]}>20</Text>
             </View>
-            <Text style={[styles.cardLegend, { color: "#fff" }]}>3 a menos que ontem</Text>
+            <Text style={[styles.topCardLegend, { color: "#fff" }]}>3 a menos que ontem</Text>
           </View>
-          <View style={[styles.topCard, { backgroundColor: "#F44336", height: 170, padding: 16 }]}>
+
+          <View style={[styles.topCard, { backgroundColor: "#F44336" }]}>
             <Text style={styles.topCardTitle}>Tempo médio de resposta</Text>
             <View style={{ flex: 1, justifyContent: "center" }}>
-              <Text style={[styles.cardText, { fontSize: 18, fontWeight: "700", color: "#fff", marginBottom: 0 }]}>2,2h</Text>
+              <Text style={[styles.topCardValue, { color: "#fff" }]}>2,2h</Text>
             </View>
-            <Text style={[styles.cardLegend, { color: "#fff" }]}>0,5h mais rápido que semana passada</Text>
+            <Text style={[styles.topCardLegend, { color: "#fff" }]}>0,5h mais rápido que semana passada</Text>
           </View>
         </View>
+
         {renderVerticalChart()}
         {renderMultiBarChart()}
         {renderChart(dailyData, dailyLabels, "% intervalo de tempo de resposta para os alertas - Diário")}
@@ -228,17 +458,79 @@ export default function Dashboard() {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: "#fff", borderRadius: 16, padding: 20, marginHorizontal: 10, marginBottom: 20, shadowColor: "#000", shadowOpacity: 0.1, shadowOffset: { width: 0, height: 4 }, shadowRadius: 6, elevation: 3, alignItems: "center" },
-  cardTitle: { fontSize: 16, fontWeight: "700", marginBottom: 6, color: "#111", textAlign: "center" },
-  cardText: { fontSize: 14, color: "#666", textAlign: "center" },
-  cardLegend: { fontSize: 11, marginTop: 4, textAlign: "center" },
-  topCardsContainer: { flexDirection: "row", marginHorizontal: 10, marginBottom: 20 },
-  topCard: { flex: 1, borderRadius: 16, justifyContent: "flex-start" },
-  topCardTitle: { fontSize: 12, fontWeight: "700", color: "#fff", textAlign: "left" },
-  chartLegend: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", marginTop: 16, gap: 12 },
-  legendItem: { flexDirection: "row", alignItems: "center", marginRight: 12 },
-  legendColor: { width: 12, height: 12, borderRadius: 6, marginRight: 6 },
-  legendText: { fontSize: 10, color: "#666" },
-  barLabels: { marginTop: 12, alignItems: "center" },
-  barLabelText: { fontSize: 10, color: "#666", textAlign: "center", marginBottom: 4 },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 10,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+    elevation: 3,
+    alignItems: "center",
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 6,
+    color: "#111",
+    textAlign: "center",
+  },
+  cardText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+  },
+  cardLegend: {
+    fontSize: 11,
+    marginTop: 4,
+    textAlign: "center",
+  },
+  topCard: {
+    flex: 1,
+    height: 160,
+    borderRadius: 12,
+    padding: 12,
+    justifyContent: "space-between",
+    marginHorizontal: 5,
+  },
+  topCardTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  topCardValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  topCardLegend: {
+    fontSize: 11,
+    textAlign: "center",
+  },
+  chartLegend: {
+    flexDirection: "row",
+    marginTop: 12,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 8,
+    marginBottom: 6,
+  },
+  legendColor: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    marginRight: 4,
+    backgroundColor: "#FFC107",
+  },
+  legendText: {
+    fontSize: 12,
+    color: "#333",
+  },
 });
