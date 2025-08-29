@@ -1,4 +1,5 @@
-import { useAuth } from "@/context/AuthContext";
+// screens/Login.tsx
+import { useAuth } from "@/hooks/useAuth"; // Importe o novo hook de autenticação
 import { loginUser } from "@/services/authService";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from "expo-router";
@@ -22,17 +23,16 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useAuth();
+  const { login } = useAuth(); // Use o hook de autenticação do Redux
   const router = useRouter();
 
   const handleLogin = async () => {
     if (!username || !password) return;
+    
     setLoading(true);
-
     try {
       const userData = await loginUser(username, password);
-      await login(userData); 
-
+      await login(userData); // Use a ação de login do Redux
       router.replace("/(tabs)/dashboard");
     } catch (err) {
       console.error("Erro no login:", err);
@@ -62,9 +62,7 @@ export default function Login() {
               style={styles.logoApp}
               resizeMode="contain"
             />
-
             <Text style={styles.subtitle}>Seja bem vindo</Text>
-
             <TextInput
               style={styles.input}
               placeholder="Usuário"
@@ -72,7 +70,6 @@ export default function Login() {
               value={username}
               onChangeText={setUsername}
             />
-
             <View style={styles.passwordContainer}>
               <TextInput
                 style={styles.passwordInput}
@@ -93,7 +90,6 @@ export default function Login() {
                 />
               </TouchableOpacity>
             </View>
-
             <TouchableOpacity
               style={[styles.button, loading && { backgroundColor: "#aaa" }]}
               onPress={handleLogin}
@@ -107,7 +103,6 @@ export default function Login() {
             </TouchableOpacity>
           </View>
         </View>
-
         <Image
           source={require("../assets/equatorial.png")}
           style={styles.logoEmpresa}

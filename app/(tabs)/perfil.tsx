@@ -1,9 +1,10 @@
+// screens/Perfil.tsx
 import ScreenLayout from "@/components/ScreenLayout";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth"; // Importe o novo hook de autenticação
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function Perfil() {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuth(); // Use o hook de autenticação do Redux
 
   return (
     <ScreenLayout title="Perfil">

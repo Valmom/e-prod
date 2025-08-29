@@ -1,43 +1,9 @@
 import ScreenLayout from "@/components/ScreenLayout";
+import { api } from "@/services/api";
 import { MaterialIcons } from '@expo/vector-icons';
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { FlatList, Platform, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
-
-const alertas = [
-  {
-    id: "1",
-    descricao: "Relatório de medição fora do padrão",
-    equipe: "Equipe Alfa",
-    data: "16/07/2025",
-    status: "Não Respondido",
-    icone: "warning",
-  },
-  {
-    id: "2",
-    descricao: "Falha no envio de dados",
-    equipe: "Equipe Beta",
-    data: "15/07/2025",
-    status: "Aguardando Resposta",
-    icone: "sync-problem",
-  },
-  {
-    id: "3",
-    descricao: "Relatório de medição fora do padrão",
-    equipe: "Equipe Alfa",
-    data: "16/07/2025",
-    status: "Recusado",
-    icone: "error-outline",
-  },
-  {
-    id: "4",
-    descricao: "Dispositivo com falha de comunicação",
-    equipe: "Equipe Gama",
-    data: "14/07/2025",
-    status: "Aguardando Resposta",
-    icone: "signal-wifi-off",
-  },  
-];
 
 const getCardTheme = (status: string) => {
   switch (status) {
@@ -84,7 +50,20 @@ export default function Alertas() {
   const theme = useColorScheme();
   const isDark = theme === "dark";
   const router = useRouter();
-  const tabBarHeight = useBottomTabBarHeight();
+  const [alertas, setAlertas] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const fetchAlertas = async () => {
+      try {
+        const response = await api.get('/alertas/table-alerta');
+        setAlertas(response.data);
+      } catch (error) {
+        console.error("Erro ao buscar alertas:", error);
+      }
+    }
+    
+    fetchAlertas();
+  }, []);
 
   const renderItem = ({ item }: any) => {
     const theme = getCardTheme(item.status);
@@ -113,27 +92,28 @@ export default function Alertas() {
         </View>
         
         <Text style={[styles.descricao, { color: theme.textColor }]}>
-          {item.descricao}
+          {item.classificacao}
         </Text>
         
         <View style={styles.infoContainer}>
           <View style={styles.infoRow}>
             <MaterialIcons name="group" size={16} color={theme.textColor} />
             <Text style={[styles.infoText, { color: theme.textColor }]}>
-              {item.equipe}
+              {item.prefixo}
             </Text>
           </View>
           <View style={styles.infoRow}>
             <MaterialIcons name="calendar-today" size={16} color={theme.textColor} />
             <Text style={[styles.infoText, { color: theme.textColor }]}>
-              {item.data}
+              {item.dataOcorrencia}
             </Text>
           </View>
         </View>
         
         <TouchableOpacity
           style={[styles.botao, { backgroundColor: theme.buttonColor }]}
-          onPress={() => router.push({ pathname: "/dashboard", params: { id: item.id } })}
+          // Alteração aqui: navegando para a página "Historico" e passando o ID como parâmetro
+          onPress={() => router.push({ pathname: "/historico", params: { id: item.id } })}
         >
           <Text style={styles.botaoTexto}>Visualizar</Text>
           <MaterialIcons name="chevron-right" size={20} color={theme.buttonTextColor} />

@@ -149,6 +149,16 @@ export default function TabsLayout() {
                 ),
               }}
             />
+            <Tabs.Screen
+              name="historico"              
+              options={{
+                tabBarIcon: ({ focused, color, size }) => (
+                  <CircleIcon focused={focused} color={color}>
+                    <Ionicons name="person-circle-outline" size={size} color="#fff" />
+                  </CircleIcon>
+                ),
+              }}
+            />            
           </Tabs>
         </ThemeProvider>
     </>

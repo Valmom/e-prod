@@ -1,24 +1,30 @@
+// _layout.tsx
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
-import { AuthProvider, useAuth } from "../context/AuthContext";
+import { Provider } from "react-redux";
+import { AuthLoader } from "../components/AuthLoader"; // Importe o AuthLoader
+import { store } from "../store";
+import { useAppSelector } from "../store/hooks"; // Importe o hook
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <Layout />
-    </AuthProvider>
+    <Provider store={store}>
+      <AuthLoader>
+        <Layout />
+      </AuthLoader>
+    </Provider>
   );
 }
 
 function Layout() {
-  const { user } = useAuth();
+  const user = useAppSelector((state) => state.auth.user); // Use o Redux
+  const isLoading = useAppSelector((state) => state.auth.isLoading); // Use o Redux
   const segments = useSegments();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? DarkTheme : DefaultTheme;
-
   const [isNavigationReady, setIsNavigationReady] = useState(false);
   const [splashShown, setSplashShown] = useState(false);
 
@@ -30,7 +36,7 @@ function Layout() {
   }, []);
 
   useEffect(() => {
-    if (!isNavigationReady) return;
+    if (!isNavigationReady || isLoading) return; // Verifique também o isLoading
 
     if (!splashShown && segments[0] !== "splash") {
       router.replace("/splash");
@@ -39,23 +45,20 @@ function Layout() {
     }
     
     if (segments[0] === "splash") return;
-
     const inAuthGroup = segments[0] === "login";
-
     if (!user && !inAuthGroup) {
       router.replace("/login");
     } else if (user && inAuthGroup) {
       router.replace("/dashboard");
     }
-  }, [user, segments, isNavigationReady]);
-
+  }, [user, segments, isNavigationReady, isLoading, splashShown]);
 
   return (
     <ThemeProvider value={theme}>
       <Stack
         screenOptions={{
-          animation: "fade", // outras opções: 'fade', 'slide_from_bottom', etc.
-          headerShown: false, // se você quiser esconder o cabeçalho padrão
+          animation: "fade",
+          headerShown: false,
         }}
       />
     </ThemeProvider>
