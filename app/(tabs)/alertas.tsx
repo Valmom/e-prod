@@ -1,24 +1,24 @@
 import ScreenLayout from "@/components/ScreenLayout";
 import { api } from "@/services/api";
 import { MaterialIcons } from '@expo/vector-icons';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   useColorScheme,
   View
 } from "react-native";
-
 const { width, height } = Dimensions.get('window');
-
 // FUNÇÕES DEFINIDAS ANTES DO COMPONENTE
 const getCardTheme = (status: string) => {
   switch (status) {
@@ -60,7 +60,6 @@ const getCardTheme = (status: string) => {
       };
   }
 };
-
 const ReturnColor = (description: string): string => {
   switch (description) {
     case 'Aprovado': return '#00b48b';
@@ -73,24 +72,54 @@ const ReturnColor = (description: string): string => {
   }
 };
 
-type HistoricoItem = {
+interface Alerta {
+  id: string;
+  status: string;
+  classificacao: string;
+  prefixo: string;
+  dataOcorrencia: string;
+  icone?: string;
+}
+
+interface HistoricoItem {
   time: string;
   title: string;
   description: string;
   circleColor: string;
-};
+}
+
+// Opções para ações corretivas
+const acoesCorretivas = [
+  "Equipe em treinamento",
+  "Problema técnico resolvido",
+  "Manutenção preventiva",
+  "Falso positivo",
+  "Outro"
+];
 
 export default function Alertas() {
   const theme = useColorScheme();
   const isDark = theme === "dark";
   const router = useRouter();
-  const tabBarHeight = useBottomTabBarHeight();
-  const [alertas, setAlertas] = useState<any[]>([]);
+  const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [historico, setHistorico] = useState<HistoricoItem[]>([]);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
-  const [alertaSelecionado, setAlertaSelecionado] = useState<any>(null);
+  const [alertaSelecionado, setAlertaSelecionado] = useState<Alerta | null>(null);
   
+  // Estado para o formulário de justificativa
+  const [formData, setFormData] = useState({
+    acaoCorretiva: "",
+    justificativa: "",
+    anexoEvidencia: false
+  });
+  
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  // Estados para o modal de anexos
+  const [modalAnexoVisible, setModalAnexoVisible] = useState(false);
+  const [anexos, setAnexos] = useState<{uri: string, type: string}[]>([]);
+  const [erroAnexo, setErroAnexo] = useState(false);
+
   useEffect(() => {
     const fetchAlertas = async () => {
       try {
@@ -98,48 +127,126 @@ export default function Alertas() {
         setAlertas(response.data);
       } catch (error) {
         console.error("Erro ao buscar alertas:", error);
+        Alert.alert("Erro", "Não foi possível carregar os alertas");
       }
     };
     
     fetchAlertas();
   }, []);
-
-  const carregarHistorico = async (alertaId: string, alerta: any) => {
+  
+  const carregarHistorico = async (alertaId: string, alerta: Alerta) => {
     setLoadingHistorico(true);
     setAlertaSelecionado(alerta);
+    setFormData({
+      acaoCorretiva: "",
+      justificativa: "",
+      anexoEvidencia: false
+    });
+    setMostrarFormulario(false);
+    setAnexos([]); // Limpa anexos ao carregar novo histórico
+    setErroAnexo(false);
     
     try {
-      let list: HistoricoItem[] = [];
       const response = await api.get('/alertas/historico-alerta?AlertaId=' + alertaId);
       const json = response.data;
-
-      for (let i = 0; i < json.length; ++i) {
-        const status = json[i].status || '';
-        const obj: HistoricoItem = {
-          time: json[i].dataOcorrencia || '',
-          title: json[i].status || '',
-          description: json[i].descricaoAlerta || '',
-          circleColor: ReturnColor(status)
-        };
-        list.push(obj);
-      }
+      const list = json.map((item: any) => ({
+        time: item.dataOcorrencia || '',
+        title: item.status || '',
+        description: item.descricaoAlerta || '',
+        circleColor: ReturnColor(item.status || '')
+      }));
       
       setHistorico(list);
       setModalVisible(true);
     } catch (error) {
       console.error("Erro ao carregar histórico:", error);
+      Alert.alert("Erro", "Não foi possível carregar o histórico");
     } finally {
       setLoadingHistorico(false);
     }
   };
-
+  
   const fecharModal = () => {
     setModalVisible(false);
     setHistorico([]);
     setAlertaSelecionado(null);
+    setMostrarFormulario(false);
+    setAnexos([]);
+    setErroAnexo(false);
   };
-
-  const renderItem = ({ item }: any) => {
+  
+  const handleEnviarJustificativa = async () => {
+    if (!formData.acaoCorretiva || !formData.justificativa) {
+      Alert.alert("Atenção", "Preencha todos os campos obrigatórios");
+      return;
+    }
+    
+    if (anexos.length === 0) {
+      setErroAnexo(true);
+      return;
+    }
+    
+    try {
+      // Chamada para a API para enviar a justificativa
+      await api.post('/alertas/justificativa', {
+        alertaId: alertaSelecionado?.id,
+        ...formData,
+        anexos: anexos // Incluindo os anexos no envio
+      });
+      
+      Alert.alert("Sucesso", "Justificativa enviada com sucesso!");
+      setMostrarFormulario(false);
+      setFormData({
+        acaoCorretiva: "",
+        justificativa: "",
+        anexoEvidencia: false
+      });
+      setAnexos([]);
+      setErroAnexo(false);
+      
+      // Recarregar o histórico
+      if (alertaSelecionado) {
+        carregarHistorico(alertaSelecionado.id, alertaSelecionado);
+      }
+    } catch (error) {
+      console.error("Erro ao enviar justificativa:", error);
+      Alert.alert("Erro", "Não foi possível enviar a justificativa");
+    }
+  };
+  
+  const toggleAnexoEvidencia = () => {
+    setFormData({
+      ...formData,
+      anexoEvidencia: !formData.anexoEvidencia
+    });
+  };
+  
+  // Funções para o modal de anexos
+  const abrirModalAnexo = () => {
+    setModalAnexoVisible(true);
+  };
+  
+  const fecharModalAnexo = () => {
+    setModalAnexoVisible(false);
+  };
+  
+  const handleAnexarArquivo = () => {
+    // Mock de anexar arquivo
+    const novoAnexo = {
+      uri: 'https://via.placeholder.com/150x150.png?text=Arquivo',
+      type: 'arquivo'
+    };
+    setAnexos([...anexos, novoAnexo]);
+    fecharModalAnexo();
+    setErroAnexo(false);
+  };
+  
+  const removerAnexo = () => {
+    setAnexos([]);
+    setErroAnexo(false);
+  };
+  
+  const renderItem = ({ item }: { item: Alerta }) => {
     const themeStyle = getCardTheme(item.status);
     
     return (
@@ -152,7 +259,7 @@ export default function Alertas() {
       ]}>
         <View style={styles.cardHeader}>
           <MaterialIcons 
-            name={item.icone || "warning"} 
+            name={item.icone as any || "warning"} 
             size={24} 
             color={themeStyle.iconColor} 
             style={styles.icon}
@@ -193,7 +300,7 @@ export default function Alertas() {
       </View>
     );
   };
-
+  
   const renderHistoricoItem = (item: HistoricoItem, index: number) => (
     <View key={index} style={styles.historicoItem}>
       <View style={styles.historicoTimeline}>
@@ -230,19 +337,18 @@ export default function Alertas() {
       </View>
     </View>
   );
-
+  
   return (
     <ScreenLayout title="Alertas">
       <FlatList
         data={alertas}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
-
-      {/* Modal de Histórico - COBRINDO TODA A TELA INCLUINDO TABBAR */}
+      
       <Modal
         visible={modalVisible}
         animationType="fade"
@@ -255,7 +361,6 @@ export default function Alertas() {
           isDark && styles.modalFullScreenContainerDark
         ]}>
           
-          {/* Cabeçalho do Modal com título centralizado e botão alinhado */}
           <View style={styles.modalHeader}>
             <View style={styles.modalTitleContainer}>
               <Text style={[
@@ -276,8 +381,7 @@ export default function Alertas() {
               />
             </TouchableOpacity>
           </View>
-
-          {/* Informações do Alerta */}
+          
           {alertaSelecionado && (
             <View style={[
               styles.alertaInfo,
@@ -329,8 +433,7 @@ export default function Alertas() {
               </View>
             </View>
           )}
-
-          {/* Lista de Histórico */}
+          
           <ScrollView 
             style={styles.historicoScrollView}
             contentContainerStyle={styles.historicoContentContainer}
@@ -363,13 +466,182 @@ export default function Alertas() {
                 </Text>
               </View>
             )}
+            
+            {!mostrarFormulario && (
+              <TouchableOpacity 
+                style={[styles.botaoJustificativa, isDark && styles.botaoJustificativaDark]}
+                onPress={() => setMostrarFormulario(true)}
+              >
+                <Text style={styles.botaoJustificativaTexto}>Adicionar Justificativa</Text>
+                <MaterialIcons name="add-comment" size={20} color="#FFF" />
+              </TouchableOpacity>
+            )}
+            
+            {mostrarFormulario && (
+              <View style={[styles.formContainer, isDark && styles.formContainerDark]}>
+                <Text style={[styles.formTitle, isDark && styles.formTitleDark]}>
+                  Preencha os dados abaixo referentes à Anomalia selecionada
+                </Text>
+                
+                <View style={styles.formSection}>
+                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                    Classificação
+                  </Text>
+                  <Text style={[styles.classificacao, isDark && styles.classificacaoDark]}>
+                    {alertaSelecionado?.classificacao || 'N/A'}
+                  </Text>
+                </View>
+                
+                <View style={styles.formSection}>
+                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                    Ação Corretiva
+                  </Text>
+                  <View style={styles.selectContainer}>
+                    <TextInput
+                      style={[styles.selectInput, isDark && styles.selectInputDark]}
+                      value={formData.acaoCorretiva}
+                      onChangeText={(text) => setFormData({...formData, acaoCorretiva: text})}
+                      placeholder="Selecione uma ação corretiva"
+                      placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
+                    />
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.acoesContainer}>
+                    {acoesCorretivas.map((acao, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.acaoPill,
+                          formData.acaoCorretiva === acao && styles.acaoPillSelected
+                        ]}
+                        onPress={() => setFormData({...formData, acaoCorretiva: acao})}
+                      >
+                        <Text style={[
+                          styles.acaoPillText,
+                          formData.acaoCorretiva === acao && styles.acaoPillTextSelected
+                        ]}>
+                          {acao}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+                
+                <View style={styles.formSection}>
+                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                    Justificativa
+                  </Text>
+                  <TextInput
+                    style={[styles.textArea, isDark && styles.textAreaDark]}
+                    value={formData.justificativa}
+                    onChangeText={(text) => setFormData({...formData, justificativa: text})}
+                    placeholder="Descreva a justificativa para esta anomalia"
+                    placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
+                    multiline
+                    numberOfLines={4}
+                  />
+                </View>
+                
+                <View style={styles.formSection}>
+                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                    Anexar Evidência
+                  </Text>
+                  
+                  <TouchableOpacity 
+                    style={[styles.anexoButton, isDark && styles.anexoButtonDark]}
+                    onPress={abrirModalAnexo}
+                  >
+                    <MaterialIcons name="attach-file" size={20} color={isDark ? "#FFF" : "#3B82F6"} />
+                    <Text style={[styles.anexoButtonText, isDark && styles.anexoButtonTextDark]}>
+                      Adicionar anexo
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  {anexos.length > 0 && (
+                    <View style={styles.anexosContainer}>
+                      <View style={styles.anexoItem}>
+                        <Image 
+                          source={{ uri: anexos[0].uri }} 
+                          style={styles.anexoImagem} 
+                        />
+                        <TouchableOpacity 
+                          style={styles.removerAnexoButton}
+                          onPress={removerAnexo}
+                        >
+                          <MaterialIcons name="close" size={16} color="#FFF" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                  
+                  {erroAnexo && (
+                    <View style={styles.erroContainer}>
+                      <MaterialIcons name="error" size={16} color="#EF4444" />
+                      <Text style={styles.erroTexto}>
+                        É necessário anexar pelo menos uma evidência
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                
+                <View style={styles.formButtons}>
+                  <TouchableOpacity 
+                    style={[styles.formButton, styles.cancelButton]}
+                    onPress={() => setMostrarFormulario(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.formButton, styles.submitButton]}
+                    onPress={handleEnviarJustificativa}
+                  >
+                    <Text style={styles.submitButtonText}>Enviar Justificativa</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </ScrollView>
+        </View>
+      </Modal>
+      
+      {/* Modal para selecionar tipo de anexo - agora centralizado */}
+      <Modal
+        visible={modalAnexoVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={fecharModalAnexo}
+      >
+        <View style={styles.modalAnexoOverlay}>
+          <View style={[styles.modalAnexoContent, isDark && styles.modalAnexoContentDark]}>
+            <Text style={[styles.modalAnexoTitle, isDark && styles.modalAnexoTitleDark]}>
+              Selecione o tipo de anexo
+            </Text>
+            
+            <TouchableOpacity 
+              style={[styles.modalAnexoOption, isDark && styles.modalAnexoOptionDark]}
+              onPress={handleAnexarArquivo}
+            >
+              <MaterialIcons name="insert-drive-file" size={24} color={isDark ? "#FFF" : "#3B82F6"} />
+              <Text style={[styles.modalAnexoOptionText, isDark && styles.modalAnexoOptionTextDark]}>
+                Escolher arquivo
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.modalAnexoOption, styles.modalAnexoCancel, isDark && styles.modalAnexoCancelDark]}
+              onPress={fecharModalAnexo}
+            >
+              <Text style={styles.modalAnexoCancelText}>
+                Cancelar
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </ScreenLayout>
   );
 }
 
+// ESTILOS (adicionando os novos estilos necessários)
 const styles = StyleSheet.create({
   listContainer: {
     padding: 16,
@@ -380,10 +652,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 16,
     marginBottom: 8,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
@@ -441,8 +710,6 @@ const styles = StyleSheet.create({
   separator: {
     height: 12,
   },
-
-  // ESTILOS DO MODAL - TELA CHEIA COBRINDO TABBAR
   modalFullScreenContainer: {
     flex: 1,
     backgroundColor: 'white',
@@ -452,7 +719,7 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between', // Distribui espaço igualmente
+    justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
     paddingTop: 50,
@@ -464,7 +731,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 44, // Compensa a largura do botão para centralizar
+    marginLeft: 44,
   },
   modalTitle: {
     fontSize: 20,
@@ -607,5 +874,290 @@ const styles = StyleSheet.create({
   },
   emptyTextDark: {
     color: '#6B7280',
+  },
+  botaoJustificativa: {
+    backgroundColor: '#3B82F6',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  botaoJustificativaDark: {
+    backgroundColor: '#2563EB',
+  },
+  botaoJustificativaTexto: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 14,
+    marginRight: 8,
+  },
+  formContainer: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  formContainerDark: {
+    backgroundColor: '#374151',
+  },
+  formTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  formTitleDark: {
+    color: '#F9FAFB',
+  },
+  formSection: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  sectionTitleDark: {
+    color: '#D1D5DB',
+  },
+  classificacao: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+    backgroundColor: '#E5E7EB',
+    padding: 12,
+    borderRadius: 8,
+  },
+  classificacaoDark: {
+    color: '#F3F4F6',
+    backgroundColor: '#4B5563',
+  },
+  selectContainer: {
+    position: 'relative',
+  },
+  selectInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    color: '#111827',
+    backgroundColor: '#FFF',
+  },
+  selectInputDark: {
+    borderColor: '#4B5563',
+    color: '#F3F4F6',
+    backgroundColor: '#4B5563',
+  },
+  acoesContainer: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  acaoPill: {
+    backgroundColor: '#E5E7EB',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 8,
+  },
+  acaoPillSelected: {
+    backgroundColor: '#3B82F6',
+  },
+  acaoPillText: {
+    color: '#4B5563',
+    fontSize: 12,
+  },
+  acaoPillTextSelected: {
+    color: '#FFF',
+  },
+  textArea: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    color: '#111827',
+    backgroundColor: '#FFF',
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  textAreaDark: {
+    borderColor: '#4B5563',
+    color: '#F3F4F6',
+    backgroundColor: '#4B5563',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  switchLabel: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#374151',
+  },
+  switchLabelDark: {
+    color: '#D1D5DB',
+  },
+  formButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  formButton: {
+    borderRadius: 8,
+    padding: 12,
+    minWidth: '48%',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#E5E7EB',
+  },
+  cancelButtonText: {
+    color: '#374151',
+    fontWeight: '600',
+  },
+  submitButton: {
+    backgroundColor: '#3B82F6',
+  },
+  submitButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
+  },
+  
+  // Estilos para o componente de anexo
+  anexoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
+  anexoButtonDark: {
+    borderColor: '#2563EB',
+  },
+  anexoButtonText: {
+    color: '#3B82F6',
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  anexoButtonTextDark: {
+    color: '#2563EB',
+  },
+  anexosContainer: {
+    marginTop: 12,
+    alignItems: 'flex-start',
+  },
+  anexoItem: {
+    position: 'relative',
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  anexoImagem: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
+  removerAnexoButton: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -12,
+    marginLeft: -12,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  erroContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: '#FEE2E2',
+    padding: 8,
+    borderRadius: 6,
+  },
+  erroTexto: {
+    color: '#B91C1C',
+    fontSize: 12,
+    marginLeft: 6,
+  },
+  
+  // Estilos para o modal de anexo centralizado
+  modalAnexoOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalAnexoContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    width: width * 0.8,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalAnexoContentDark: {
+    backgroundColor: '#374151',
+  },
+  modalAnexoTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalAnexoTitleDark: {
+    color: '#F9FAFB',
+  },
+  modalAnexoOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: '#F3F4F6',
+  },
+  modalAnexoOptionDark: {
+    backgroundColor: '#4B5563',
+  },
+  modalAnexoOptionText: {
+    fontSize: 16,
+    color: '#1F2937',
+    marginLeft: 16,
+  },
+  modalAnexoOptionTextDark: {
+    color: '#F9FAFB',
+  },
+  modalAnexoCancel: {
+    backgroundColor: '#E5E7EB',
+    marginTop: 8,
+  },
+  modalAnexoCancelDark: {
+    backgroundColor: '#4B5563',
+  },
+  modalAnexoCancelText: {
+    fontSize: 16,
+    color: '#3B82F6',
+    fontWeight: '500',
   },
 });
