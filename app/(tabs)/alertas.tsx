@@ -1,7 +1,9 @@
 import ScreenLayout from "@/components/ScreenLayout";
 import { api } from "@/services/api";
 import { MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from "expo-router";
+import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,6 +11,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -18,7 +21,9 @@ import {
   useColorScheme,
   View
 } from "react-native";
+
 const { width, height } = Dimensions.get('window');
+
 // FUNÇÕES DEFINIDAS ANTES DO COMPONENTE
 const getCardTheme = (status: string) => {
   switch (status) {
@@ -60,6 +65,7 @@ const getCardTheme = (status: string) => {
       };
   }
 };
+
 const ReturnColor = (description: string): string => {
   switch (description) {
     case 'Aprovado': return '#00b48b';
@@ -117,8 +123,9 @@ export default function Alertas() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   // Estados para o modal de anexos
   const [modalAnexoVisible, setModalAnexoVisible] = useState(false);
-  const [anexos, setAnexos] = useState<{uri: string, type: string}[]>([]);
+  const [anexos, setAnexos] = useState<{uri: string, type: string, name: string}[]>([]);
   const [erroAnexo, setErroAnexo] = useState(false);
+  const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
 
   useEffect(() => {
     const fetchAlertas = async () => {
@@ -134,6 +141,14 @@ export default function Alertas() {
     fetchAlertas();
   }, []);
   
+  useEffect(() => {
+    // Solicitar permissão da câmera
+    (async () => {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      setCameraPermission(status === 'granted');
+    })();
+  }, []);
+
   const carregarHistorico = async (alertaId: string, alerta: Alerta) => {
     setLoadingHistorico(true);
     setAlertaSelecionado(alerta);
@@ -143,7 +158,7 @@ export default function Alertas() {
       anexoEvidencia: false
     });
     setMostrarFormulario(false);
-    setAnexos([]); // Limpa anexos ao carregar novo histórico
+    setAnexos([]);
     setErroAnexo(false);
     
     try {
@@ -174,43 +189,136 @@ export default function Alertas() {
     setAnexos([]);
     setErroAnexo(false);
   };
-  
+
+  // FUNÇÃO PARA TIRAR FOTO
+  const tirarFoto = async () => {
+    try {
+      if (cameraPermission === false) {
+        Alert.alert(
+          "Permissão necessária",
+          "É necessário permitir o acesso à câmera para tirar fotos",
+          [
+            {
+              text: "Cancelar",
+              style: "cancel"
+            },
+            {
+              text: "Configurações",
+              onPress: () => Linking.openSettings()
+            }
+          ]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const photo = result.assets[0];
+        
+        const novoAnexo = {
+          uri: photo.uri,
+          type: 'image/jpeg',
+          name: `evidencia_${Date.now()}.jpg`
+        };
+        
+        setAnexos([novoAnexo]);
+        setErroAnexo(false);
+        setModalAnexoVisible(false);
+      }
+    } catch (error) {
+      console.error("Erro ao tirar foto:", error);
+      Alert.alert("Erro", "Não foi possível abrir a câmera");
+    }
+  };
+
+  // FUNÇÃO AUXILIAR PARA PEGAR TOKEN
+  const getToken = async (): Promise<string> => {
+    try {
+      const stored = await SecureStore.getItemAsync("mipi-user-data");
+      if (stored) {
+        const userData = JSON.parse(stored);
+        return userData?.accessToken || '';
+      }
+      return '';
+    } catch (error) {
+      console.error("Erro ao pegar token:", error);
+      return '';
+    }
+  };
+
+  // FUNÇÃO CORRIGIDA PARA ENVIAR JUSTIFICATIVA
   const handleEnviarJustificativa = async () => {
     if (!formData.acaoCorretiva || !formData.justificativa) {
       Alert.alert("Atenção", "Preencha todos os campos obrigatórios");
       return;
     }
-    
+
     if (anexos.length === 0) {
       setErroAnexo(true);
       return;
     }
-    
+
     try {
-      // Chamada para a API para enviar a justificativa
-      await api.post('/alertas/justificativa', {
-        alertaId: alertaSelecionado?.id,
-        ...formData,
-        anexos: anexos // Incluindo os anexos no envio
-      });
+      // Criar FormData
+      const formDataToSend = new FormData();
       
-      Alert.alert("Sucesso", "Justificativa enviada com sucesso!");
-      setMostrarFormulario(false);
-      setFormData({
-        acaoCorretiva: "",
-        justificativa: "",
-        anexoEvidencia: false
+      // Dados básicos
+      formDataToSend.append('alertaId', alertaSelecionado?.id || '');
+      formDataToSend.append('acaoCorretiva', formData.acaoCorretiva);
+      formDataToSend.append('justificativa', formData.justificativa);
+
+      // Adicionar a foto
+      anexos.forEach((anexo) => {
+        formDataToSend.append('files', {
+          uri: anexo.uri,
+          name: anexo.name,
+          type: anexo.type
+        } as any);
       });
-      setAnexos([]);
-      setErroAnexo(false);
+
+      const token = await getToken();
       
-      // Recarregar o histórico
-      if (alertaSelecionado) {
-        carregarHistorico(alertaSelecionado.id, alertaSelecionado);
+      // Enviar para API usando fetch
+      const response = await fetch('https://mipi.equatorialenergia.com.br/mipiapi/api/v1/alertas/justificativa', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        body: formDataToSend,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        Alert.alert("Sucesso", "Justificativa enviada com sucesso!");
+        
+        // Resetar estados
+        setMostrarFormulario(false);
+        setFormData({
+          acaoCorretiva: "",
+          justificativa: "",
+          anexoEvidencia: false
+        });
+        setAnexos([]);
+        setErroAnexo(false);
+
+        // Recarregar histórico
+        if (alertaSelecionado) {
+          carregarHistorico(alertaSelecionado.id, alertaSelecionado);
+        }
+      } else {
+        const errorData = await response.text();
+        throw new Error(`Erro ${response.status}: ${errorData}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao enviar justificativa:", error);
-      Alert.alert("Erro", "Não foi possível enviar a justificativa");
+      Alert.alert("Erro", error.message || "Não foi possível enviar a justificativa");
     }
   };
   
@@ -228,17 +336,6 @@ export default function Alertas() {
   
   const fecharModalAnexo = () => {
     setModalAnexoVisible(false);
-  };
-  
-  const handleAnexarArquivo = () => {
-    // Mock de anexar arquivo
-    const novoAnexo = {
-      uri: 'https://via.placeholder.com/150x150.png?text=Arquivo',
-      type: 'arquivo'
-    };
-    setAnexos([...anexos, novoAnexo]);
-    fecharModalAnexo();
-    setErroAnexo(false);
   };
   
   const removerAnexo = () => {
@@ -330,7 +427,7 @@ export default function Alertas() {
           <Text style={[
             styles.historicoDescription,
             isDark && styles.historicoDescriptionDark
-          ]}>
+        ]}>
             {item.description}
           </Text>
         )}
@@ -543,16 +640,16 @@ export default function Alertas() {
                 
                 <View style={styles.formSection}>
                   <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
-                    Anexar Evidência
+                    Evidência Fotográfica
                   </Text>
                   
                   <TouchableOpacity 
                     style={[styles.anexoButton, isDark && styles.anexoButtonDark]}
                     onPress={abrirModalAnexo}
                   >
-                    <MaterialIcons name="attach-file" size={20} color={isDark ? "#FFF" : "#3B82F6"} />
+                    <MaterialIcons name="camera-alt" size={20} color={isDark ? "#FFF" : "#3B82F6"} />
                     <Text style={[styles.anexoButtonText, isDark && styles.anexoButtonTextDark]}>
-                      Adicionar anexo
+                      {anexos.length > 0 ? 'Alterar foto' : 'Tirar foto'}
                     </Text>
                   </TouchableOpacity>
                   
@@ -561,15 +658,16 @@ export default function Alertas() {
                       <View style={styles.anexoItem}>
                         <Image 
                           source={{ uri: anexos[0].uri }} 
-                          style={styles.anexoImagem} 
+                          style={styles.fotoPreview} 
                         />
                         <TouchableOpacity 
-                          style={styles.removerAnexoButton}
+                          style={styles.removerFotoButton}
                           onPress={removerAnexo}
                         >
                           <MaterialIcons name="close" size={16} color="#FFF" />
                         </TouchableOpacity>
                       </View>
+                      <Text style={styles.fotoInfo}>Foto anexada ✓</Text>
                     </View>
                   )}
                   
@@ -577,7 +675,7 @@ export default function Alertas() {
                     <View style={styles.erroContainer}>
                       <MaterialIcons name="error" size={16} color="#EF4444" />
                       <Text style={styles.erroTexto}>
-                        É necessário anexar pelo menos uma evidência
+                        É necessário anexar uma foto como evidência
                       </Text>
                     </View>
                   )}
@@ -603,26 +701,26 @@ export default function Alertas() {
         </View>
       </Modal>
       
-      {/* Modal para selecionar tipo de anexo - agora centralizado */}
+      {/* Modal para tirar foto */}
       <Modal
         visible={modalAnexoVisible}
-        animationType="fade"
+        animationType="slide"
         transparent={true}
         onRequestClose={fecharModalAnexo}
       >
         <View style={styles.modalAnexoOverlay}>
           <View style={[styles.modalAnexoContent, isDark && styles.modalAnexoContentDark]}>
             <Text style={[styles.modalAnexoTitle, isDark && styles.modalAnexoTitleDark]}>
-              Selecione o tipo de anexo
+              Adicionar evidência
             </Text>
             
             <TouchableOpacity 
               style={[styles.modalAnexoOption, isDark && styles.modalAnexoOptionDark]}
-              onPress={handleAnexarArquivo}
+              onPress={tirarFoto}
             >
-              <MaterialIcons name="insert-drive-file" size={24} color={isDark ? "#FFF" : "#3B82F6"} />
+              <MaterialIcons name="camera-alt" size={24} color={isDark ? "#FFF" : "#3B82F6"} />
               <Text style={[styles.modalAnexoOptionText, isDark && styles.modalAnexoOptionTextDark]}>
-                Escolher arquivo
+                📸 Tirar foto
               </Text>
             </TouchableOpacity>
             
@@ -641,7 +739,7 @@ export default function Alertas() {
   );
 }
 
-// ESTILOS (adicionando os novos estilos necessários)
+// ESTILOS
 const styles = StyleSheet.create({
   listContainer: {
     padding: 16,
@@ -992,18 +1090,6 @@ const styles = StyleSheet.create({
     color: '#F3F4F6',
     backgroundColor: '#4B5563',
   },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  switchLabel: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#374151',
-  },
-  switchLabelDark: {
-    color: '#D1D5DB',
-  },
   formButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1029,8 +1115,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '600',
   },
-  
-  // Estilos para o componente de anexo
   anexoButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1061,23 +1145,27 @@ const styles = StyleSheet.create({
     marginRight: 10,
     marginBottom: 10,
   },
-  anexoImagem: {
+  fotoPreview: {
     width: 100,
     height: 100,
     borderRadius: 8,
   },
-  removerAnexoButton: {
+  removerFotoButton: {
     position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginTop: -12,
-    marginLeft: -12,
+    top: -8,
+    right: -8,
     backgroundColor: '#EF4444',
     borderRadius: 12,
     width: 24,
     height: 24,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  fotoInfo: {
+    fontSize: 12,
+    color: '#10B981',
+    marginTop: 5,
+    fontWeight: '500',
   },
   erroContainer: {
     flexDirection: 'row',
@@ -1092,8 +1180,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginLeft: 6,
   },
-  
-  // Estilos para o modal de anexo centralizado
   modalAnexoOverlay: {
     flex: 1,
     justifyContent: 'center',
