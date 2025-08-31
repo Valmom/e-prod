@@ -21,9 +21,7 @@ import {
   useColorScheme,
   View
 } from "react-native";
-
 const { width, height } = Dimensions.get('window');
-
 // FUNÇÕES DEFINIDAS ANTES DO COMPONENTE
 const getCardTheme = (status: string) => {
   switch (status) {
@@ -65,7 +63,6 @@ const getCardTheme = (status: string) => {
       };
   }
 };
-
 const ReturnColor = (description: string): string => {
   switch (description) {
     case 'Aprovado': return '#00b48b';
@@ -77,7 +74,6 @@ const ReturnColor = (description: string): string => {
     default: return '#038a25';
   }
 };
-
 interface Alerta {
   id: string;
   status: string;
@@ -86,14 +82,12 @@ interface Alerta {
   dataOcorrencia: string;
   icone?: string;
 }
-
 interface HistoricoItem {
   time: string;
   title: string;
   description: string;
   circleColor: string;
 }
-
 // Opções para ações corretivas
 const acoesCorretivas = [
   "Equipe em treinamento",
@@ -102,7 +96,6 @@ const acoesCorretivas = [
   "Falso positivo",
   "Outro"
 ];
-
 export default function Alertas() {
   const theme = useColorScheme();
   const isDark = theme === "dark";
@@ -126,7 +119,10 @@ export default function Alertas() {
   const [anexos, setAnexos] = useState<{uri: string, type: string, name: string}[]>([]);
   const [erroAnexo, setErroAnexo] = useState(false);
   const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
-
+  
+  // Constante para limite de fotos
+  const MAX_FOTOS = 5;
+  
   useEffect(() => {
     const fetchAlertas = async () => {
       try {
@@ -148,7 +144,7 @@ export default function Alertas() {
       setCameraPermission(status === 'granted');
     })();
   }, []);
-
+  
   const carregarHistorico = async (alertaId: string, alerta: Alerta) => {
     setLoadingHistorico(true);
     setAlertaSelecionado(alerta);
@@ -189,8 +185,8 @@ export default function Alertas() {
     setAnexos([]);
     setErroAnexo(false);
   };
-
-  // FUNÇÃO PARA TIRAR FOTO
+  
+  // FUNÇÃO PARA TIRAR FOTO - MODIFICADA PARA PERMITIR MÚLTIPLAS FOTOS
   const tirarFoto = async () => {
     try {
       if (cameraPermission === false) {
@@ -210,14 +206,20 @@ export default function Alertas() {
         );
         return;
       }
-
+      
+      // Verificar se já atingimos o limite de fotos
+      if (anexos.length >= MAX_FOTOS) {
+        Alert.alert("Limite atingido", `Você só pode anexar até ${MAX_FOTOS} fotos`);
+        return;
+      }
+      
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7,
       });
-
+      
       if (!result.canceled && result.assets[0]) {
         const photo = result.assets[0];
         
@@ -227,7 +229,8 @@ export default function Alertas() {
           name: `evidencia_${Date.now()}.jpg`
         };
         
-        setAnexos([novoAnexo]);
+        // Adiciona a nova foto ao array existente
+        setAnexos(prevAnexos => [...prevAnexos, novoAnexo]);
         setErroAnexo(false);
         setModalAnexoVisible(false);
       }
@@ -236,7 +239,7 @@ export default function Alertas() {
       Alert.alert("Erro", "Não foi possível abrir a câmera");
     }
   };
-
+  
   // FUNÇÃO AUXILIAR PARA PEGAR TOKEN
   const getToken = async (): Promise<string> => {
     try {
@@ -251,19 +254,17 @@ export default function Alertas() {
       return '';
     }
   };
-
+  
   // FUNÇÃO CORRIGIDA PARA ENVIAR JUSTIFICATIVA
   const handleEnviarJustificativa = async () => {
     if (!formData.acaoCorretiva || !formData.justificativa) {
       Alert.alert("Atenção", "Preencha todos os campos obrigatórios");
       return;
     }
-
     if (anexos.length === 0) {
       setErroAnexo(true);
       return;
     }
-
     try {
       // Criar FormData
       const formDataToSend = new FormData();
@@ -272,17 +273,22 @@ export default function Alertas() {
       formDataToSend.append('alertaId', alertaSelecionado?.id || '');
       formDataToSend.append('acaoCorretiva', formData.acaoCorretiva);
       formDataToSend.append('justificativa', formData.justificativa);
-
-      // Adicionar a foto
-      anexos.forEach((anexo) => {
-        formDataToSend.append('files', {
+      
+      // Adicionar todas as fotos com nomes de campo diferentes
+      anexos.forEach((anexo, index) => {
+        formDataToSend.append(`file${index}`, {
           uri: anexo.uri,
           name: anexo.name,
           type: anexo.type
         } as any);
       });
-
+      
       const token = await getToken();
+      
+      // Verificar se o token foi obtido corretamente
+      if (!token) {
+        throw new Error("Token de autenticação não encontrado");
+      }
       
       // Enviar para API usando fetch
       const response = await fetch('https://mipi.equatorialenergia.com.br/mipiapi/api/v1/alertas/justificativa', {
@@ -290,10 +296,14 @@ export default function Alertas() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
+          'Content-Type': 'multipart/form-data',
         },
         body: formDataToSend,
       });
-
+      
+      // Verificar o status da resposta
+      console.log("Status da resposta:", response.status);
+      
       if (response.ok) {
         const data = await response.json();
         Alert.alert("Sucesso", "Justificativa enviada com sucesso!");
@@ -307,14 +317,22 @@ export default function Alertas() {
         });
         setAnexos([]);
         setErroAnexo(false);
-
+        
         // Recarregar histórico
         if (alertaSelecionado) {
           carregarHistorico(alertaSelecionado.id, alertaSelecionado);
         }
       } else {
-        const errorData = await response.text();
-        throw new Error(`Erro ${response.status}: ${errorData}`);
+        // Tentar obter mais informações sobre o erro
+        let errorMessage = `Erro ${response.status}`;
+        try {
+          const errorData = await response.text();
+          errorMessage += `: ${errorData}`;
+          console.error("Resposta do servidor:", errorData);
+        } catch (e) {
+          console.error("Não foi possível ler a resposta do erro");
+        }
+        throw new Error(errorMessage);
       }
     } catch (error: any) {
       console.error("Erro ao enviar justificativa:", error);
@@ -338,9 +356,18 @@ export default function Alertas() {
     setModalAnexoVisible(false);
   };
   
-  const removerAnexo = () => {
-    setAnexos([]);
-    setErroAnexo(false);
+  // MODIFICADA PARA REMOVER APENAS UMA FOTO ESPECÍFICA
+  const removerAnexo = (index: number) => {
+    setAnexos(prevAnexos => {
+      const novosAnexos = [...prevAnexos];
+      novosAnexos.splice(index, 1);
+      return novosAnexos;
+    });
+    
+    // Se não restar nenhuma foto, setamos o erro
+    if (anexos.length <= 1) {
+      setErroAnexo(true);
+    }
   };
   
   const renderItem = ({ item }: { item: Alerta }) => {
@@ -646,28 +673,44 @@ export default function Alertas() {
                   <TouchableOpacity 
                     style={[styles.anexoButton, isDark && styles.anexoButtonDark]}
                     onPress={abrirModalAnexo}
+                    disabled={anexos.length >= MAX_FOTOS}
                   >
                     <MaterialIcons name="camera-alt" size={20} color={isDark ? "#FFF" : "#3B82F6"} />
                     <Text style={[styles.anexoButtonText, isDark && styles.anexoButtonTextDark]}>
-                      {anexos.length > 0 ? 'Alterar foto' : 'Tirar foto'}
+                      {anexos.length > 0 ? 'Adicionar mais fotos' : 'Tirar foto'}
                     </Text>
                   </TouchableOpacity>
                   
                   {anexos.length > 0 && (
                     <View style={styles.anexosContainer}>
-                      <View style={styles.anexoItem}>
-                        <Image 
-                          source={{ uri: anexos[0].uri }} 
-                          style={styles.fotoPreview} 
-                        />
-                        <TouchableOpacity 
-                          style={styles.removerFotoButton}
-                          onPress={removerAnexo}
-                        >
-                          <MaterialIcons name="close" size={16} color="#FFF" />
-                        </TouchableOpacity>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        {anexos.map((anexo, index) => (
+                          <View key={index} style={styles.anexoItem}>
+                            <Image 
+                              source={{ uri: anexo.uri }} 
+                              style={styles.fotoPreview} 
+                            />
+                            <TouchableOpacity 
+                              style={styles.removerFotoButton}
+                              onPress={() => removerAnexo(index)}
+                            >
+                              <MaterialIcons name="close" size={16} color="#FFF" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </ScrollView>
+                      <View style={styles.fotoInfoContainer}>
+                        <Text style={styles.fotoInfo}>{anexos.length} de {MAX_FOTOS} fotos anexadas ✓</Text>
+                        {anexos.length < MAX_FOTOS && (
+                          <TouchableOpacity 
+                            style={styles.adicionarMaisButton}
+                            onPress={abrirModalAnexo}
+                          >
+                            <MaterialIcons name="add-a-photo" size={16} color="#3B82F6" />
+                            <Text style={styles.adicionarMaisText}>Adicionar mais</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
-                      <Text style={styles.fotoInfo}>Foto anexada ✓</Text>
                     </View>
                   )}
                   
@@ -675,7 +718,7 @@ export default function Alertas() {
                     <View style={styles.erroContainer}>
                       <MaterialIcons name="error" size={16} color="#EF4444" />
                       <Text style={styles.erroTexto}>
-                        É necessário anexar uma foto como evidência
+                        É necessário anexar pelo menos uma foto como evidência
                       </Text>
                     </View>
                   )}
@@ -738,7 +781,6 @@ export default function Alertas() {
     </ScreenLayout>
   );
 }
-
 // ESTILOS
 const styles = StyleSheet.create({
   listContainer: {
@@ -1161,10 +1203,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  fotoInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
   fotoInfo: {
     fontSize: 12,
     color: '#10B981',
-    marginTop: 5,
+    fontWeight: '500',
+  },
+  adicionarMaisButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 16,
+  },
+  adicionarMaisText: {
+    color: '#3B82F6',
+    fontSize: 12,
+    marginLeft: 4,
     fontWeight: '500',
   },
   erroContainer: {
