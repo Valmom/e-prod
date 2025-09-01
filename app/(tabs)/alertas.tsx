@@ -432,29 +432,17 @@ export default function Alertas() {
         {index < historico.length - 1 && <View style={styles.historicoLine} />}
       </View>
       
-      <View style={[
-        styles.historicoContent,
-        isDark && styles.historicoContentDark
-      ]}>
-        <Text style={[
-          styles.historicoTime,
-          isDark && styles.historicoTimeDark
-        ]}>
+      <View style={styles.historicoContent}>
+        <Text style={styles.historicoTime}>
           {item.time}
         </Text>
         
-        <Text style={[
-          styles.historicoTitle,
-          isDark && styles.historicoTitleDark
-        ]}>
+        <Text style={styles.historicoTitle}>
           {item.title}
         </Text>
         
         {item.description && (
-          <Text style={[
-            styles.historicoDescription,
-            isDark && styles.historicoDescriptionDark
-        ]}>
+          <Text style={styles.historicoDescription}>
             {item.description}
           </Text>
         )}
@@ -480,17 +468,11 @@ export default function Alertas() {
         onRequestClose={fecharModal}
         statusBarTranslucent={true}
       >
-        <View style={[
-          styles.modalFullScreenContainer,
-          isDark && styles.modalFullScreenContainerDark
-        ]}>
+        <View style={styles.modalFullScreenContainer}>
           
           <View style={styles.modalHeader}>
             <View style={styles.modalTitleContainer}>
-              <Text style={[
-                styles.modalTitle,
-                isDark && styles.modalTitleDark
-              ]}>
+              <Text style={styles.modalTitle}>
                 Histórico do Alerta
               </Text>
             </View>
@@ -501,55 +483,31 @@ export default function Alertas() {
               <MaterialIcons 
                 name="close" 
                 size={32}
-                color={isDark ? "#FFF" : "#666"} 
+                color="#666" 
               />
             </TouchableOpacity>
           </View>
           
           {alertaSelecionado && (
-            <View style={[
-              styles.alertaInfo,
-              isDark && styles.alertaInfoDark
-            ]}>
-              <Text style={[
-                styles.alertaTitulo,
-                isDark && styles.alertaTituloDark
-              ]}>
+            <View style={styles.alertaInfo}>
+              <Text style={styles.alertaTitulo}>
                 {alertaSelecionado.classificacao}
               </Text>
               <View style={styles.alertaDetalhes}>
-                <Text style={[
-                  styles.alertaTexto,
-                  isDark && styles.alertaTextoDark
-                ]}>
-                  <Text style={[
-                    styles.alertaLabel,
-                    isDark && styles.alertaLabelDark
-                  ]}>
+                <Text style={styles.alertaTexto}>
+                  <Text style={styles.alertaLabel}>
                     Prefixo:{' '}
                   </Text>
                   {alertaSelecionado.prefixo}
                 </Text>
-                <Text style={[
-                  styles.alertaTexto,
-                  isDark && styles.alertaTextoDark
-                ]}>
-                  <Text style={[
-                    styles.alertaLabel,
-                    isDark && styles.alertaLabelDark
-                  ]}>
+                <Text style={styles.alertaTexto}>
+                  <Text style={styles.alertaLabel}>
                     Data:{' '}
                   </Text>
                   {alertaSelecionado.dataOcorrencia}
                 </Text>
-                <Text style={[
-                  styles.alertaTexto,
-                  isDark && styles.alertaTextoDark
-                ]}>
-                  <Text style={[
-                    styles.alertaLabel,
-                    isDark && styles.alertaLabelDark
-                  ]}>
+                <Text style={styles.alertaTexto}>
+                  <Text style={styles.alertaLabel}>
                     Status:{' '}
                   </Text>
                   {alertaSelecionado.status}
@@ -566,10 +524,7 @@ export default function Alertas() {
             {loadingHistorico ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#3B82F6" />
-                <Text style={[
-                  styles.loadingText,
-                  isDark && styles.loadingTextDark
-                ]}>
+                <Text style={styles.loadingText}>
                   Carregando histórico...
                 </Text>
               </View>
@@ -580,12 +535,9 @@ export default function Alertas() {
                 <MaterialIcons 
                   name="history" 
                   size={48} 
-                  color={isDark ? "#666" : "#CCC"} 
+                  color="#CCC" 
                 />
-                <Text style={[
-                  styles.emptyText,
-                  isDark && styles.emptyTextDark
-                ]}>
+                <Text style={styles.emptyText}>
                   Nenhum histórico encontrado
                 </Text>
               </View>
@@ -593,7 +545,7 @@ export default function Alertas() {
             
             {!mostrarFormulario && (
               <TouchableOpacity 
-                style={[styles.botaoJustificativa, isDark && styles.botaoJustificativaDark]}
+                style={styles.botaoJustificativa}
                 onPress={() => setMostrarFormulario(true)}
               >
                 <Text style={styles.botaoJustificativaTexto}>Adicionar Justificativa</Text>
@@ -602,31 +554,31 @@ export default function Alertas() {
             )}
             
             {mostrarFormulario && (
-              <View style={[styles.formContainer, isDark && styles.formContainerDark]}>
-                <Text style={[styles.formTitle, isDark && styles.formTitleDark]}>
+              <View style={styles.formContainer}>
+                <Text style={styles.formTitle}>
                   Preencha os dados abaixo referentes à Anomalia selecionada
                 </Text>
                 
                 <View style={styles.formSection}>
-                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                  <Text style={styles.sectionTitle}>
                     Classificação
                   </Text>
-                  <Text style={[styles.classificacao, isDark && styles.classificacaoDark]}>
+                  <Text style={styles.classificacao}>
                     {alertaSelecionado?.classificacao || 'N/A'}
                   </Text>
                 </View>
                 
                 <View style={styles.formSection}>
-                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                  <Text style={styles.sectionTitle}>
                     Ação Corretiva
                   </Text>
                   <View style={styles.selectContainer}>
                     <TextInput
-                      style={[styles.selectInput, isDark && styles.selectInputDark]}
+                      style={styles.selectInput}
                       value={formData.acaoCorretiva}
                       onChangeText={(text) => setFormData({...formData, acaoCorretiva: text})}
                       placeholder="Selecione uma ação corretiva"
-                      placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
+                      placeholderTextColor="#6B7280"
                     />
                   </View>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.acoesContainer}>
@@ -651,32 +603,32 @@ export default function Alertas() {
                 </View>
                 
                 <View style={styles.formSection}>
-                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                  <Text style={styles.sectionTitle}>
                     Justificativa
                   </Text>
                   <TextInput
-                    style={[styles.textArea, isDark && styles.textAreaDark]}
+                    style={styles.textArea}
                     value={formData.justificativa}
                     onChangeText={(text) => setFormData({...formData, justificativa: text})}
                     placeholder="Descreva a justificativa para esta anomalia"
-                    placeholderTextColor={isDark ? "#9CA3AF" : "#6B7280"}
+                    placeholderTextColor="#6B7280"
                     multiline
                     numberOfLines={4}
                   />
                 </View>
                 
                 <View style={styles.formSection}>
-                  <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                  <Text style={styles.sectionTitle}>
                     Evidência Fotográfica
                   </Text>
                   
                   <TouchableOpacity 
-                    style={[styles.anexoButton, isDark && styles.anexoButtonDark]}
+                    style={styles.anexoButton}
                     onPress={abrirModalAnexo}
                     disabled={anexos.length >= MAX_FOTOS}
                   >
-                    <MaterialIcons name="camera-alt" size={20} color={isDark ? "#FFF" : "#3B82F6"} />
-                    <Text style={[styles.anexoButtonText, isDark && styles.anexoButtonTextDark]}>
+                    <MaterialIcons name="camera-alt" size={20} color="#3B82F6" />
+                    <Text style={styles.anexoButtonText}>
                       {anexos.length > 0 ? 'Adicionar mais fotos' : 'Tirar foto'}
                     </Text>
                   </TouchableOpacity>
@@ -752,23 +704,23 @@ export default function Alertas() {
         onRequestClose={fecharModalAnexo}
       >
         <View style={styles.modalAnexoOverlay}>
-          <View style={[styles.modalAnexoContent, isDark && styles.modalAnexoContentDark]}>
-            <Text style={[styles.modalAnexoTitle, isDark && styles.modalAnexoTitleDark]}>
+          <View style={styles.modalAnexoContent}>
+            <Text style={styles.modalAnexoTitle}>
               Adicionar evidência
             </Text>
             
             <TouchableOpacity 
-              style={[styles.modalAnexoOption, isDark && styles.modalAnexoOptionDark]}
+              style={styles.modalAnexoOption}
               onPress={tirarFoto}
             >
-              <MaterialIcons name="camera-alt" size={24} color={isDark ? "#FFF" : "#3B82F6"} />
-              <Text style={[styles.modalAnexoOptionText, isDark && styles.modalAnexoOptionTextDark]}>
+              <MaterialIcons name="camera-alt" size={24} color="#3B82F6" />
+              <Text style={styles.modalAnexoOptionText}>
                 📸 Tirar foto
               </Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.modalAnexoOption, styles.modalAnexoCancel, isDark && styles.modalAnexoCancelDark]}
+              style={[styles.modalAnexoOption, styles.modalAnexoCancel]}
               onPress={fecharModalAnexo}
             >
               <Text style={styles.modalAnexoCancelText}>
@@ -854,9 +806,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white',
   },
-  modalFullScreenContainerDark: {
-    backgroundColor: '#1F2937',
-  },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -879,9 +828,6 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     textAlign: 'center',
   },
-  modalTitleDark: {
-    color: '#FFF',
-  },
   closeButton: {
     width: 44,
     height: 44,
@@ -897,17 +843,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
   },
-  alertaInfoDark: {
-    backgroundColor: '#374151',
-  },
   alertaTitulo: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 12,
-  },
-  alertaTituloDark: {
-    color: '#FFF',
   },
   alertaDetalhes: {
     gap: 6,
@@ -917,15 +857,9 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     lineHeight: 20,
   },
-  alertaTextoDark: {
-    color: '#D1D5DB',
-  },
   alertaLabel: {
     fontWeight: '500',
     color: '#374151',
-  },
-  alertaLabelDark: {
-    color: '#FFF',
   },
   historicoScrollView: {
     flex: 1,
@@ -961,17 +895,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
   },
-  historicoContentDark: {
-    backgroundColor: '#374151',
-  },
   historicoTime: {
     fontSize: 12,
     color: '#6B7280',
     marginBottom: 4,
     fontWeight: '500',
-  },
-  historicoTimeDark: {
-    color: '#9CA3AF',
   },
   historicoTitle: {
     fontSize: 14,
@@ -979,16 +907,10 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 4,
   },
-  historicoTitleDark: {
-    color: '#FFF',
-  },
   historicoDescription: {
     fontSize: 13,
     color: '#6B7280',
     lineHeight: 18,
-  },
-  historicoDescriptionDark: {
-    color: '#D1D5DB',
   },
   loadingContainer: {
     alignItems: 'center',
@@ -998,9 +920,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: '#6B7280',
     fontSize: 14,
-  },
-  loadingTextDark: {
-    color: '#9CA3AF',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -1012,9 +931,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 14,
   },
-  emptyTextDark: {
-    color: '#6B7280',
-  },
   botaoJustificativa: {
     backgroundColor: '#3B82F6',
     flexDirection: 'row',
@@ -1024,9 +940,6 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 20,
     marginBottom: 10,
-  },
-  botaoJustificativaDark: {
-    backgroundColor: '#2563EB',
   },
   botaoJustificativaTexto: {
     color: '#FFF',
@@ -1041,18 +954,12 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 30,
   },
-  formContainerDark: {
-    backgroundColor: '#374151',
-  },
   formTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 16,
     textAlign: 'center',
-  },
-  formTitleDark: {
-    color: '#F9FAFB',
   },
   formSection: {
     marginBottom: 16,
@@ -1063,9 +970,6 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 8,
   },
-  sectionTitleDark: {
-    color: '#D1D5DB',
-  },
   classificacao: {
     fontSize: 16,
     fontWeight: '500',
@@ -1073,10 +977,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
     padding: 12,
     borderRadius: 8,
-  },
-  classificacaoDark: {
-    color: '#F3F4F6',
-    backgroundColor: '#4B5563',
   },
   selectContainer: {
     position: 'relative',
@@ -1089,11 +989,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#111827',
     backgroundColor: '#FFF',
-  },
-  selectInputDark: {
-    borderColor: '#4B5563',
-    color: '#F3F4F6',
-    backgroundColor: '#4B5563',
   },
   acoesContainer: {
     marginTop: 8,
@@ -1126,11 +1021,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     minHeight: 100,
     textAlignVertical: 'top',
-  },
-  textAreaDark: {
-    borderColor: '#4B5563',
-    color: '#F3F4F6',
-    backgroundColor: '#4B5563',
   },
   formButtons: {
     flexDirection: 'row',
@@ -1167,16 +1057,10 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 8,
   },
-  anexoButtonDark: {
-    borderColor: '#2563EB',
-  },
   anexoButtonText: {
     color: '#3B82F6',
     fontWeight: '500',
     marginLeft: 8,
-  },
-  anexoButtonTextDark: {
-    color: '#2563EB',
   },
   anexosContainer: {
     marginTop: 12,
@@ -1262,18 +1146,12 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  modalAnexoContentDark: {
-    backgroundColor: '#374151',
-  },
   modalAnexoTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 20,
     textAlign: 'center',
-  },
-  modalAnexoTitleDark: {
-    color: '#F9FAFB',
   },
   modalAnexoOption: {
     flexDirection: 'row',
@@ -1284,23 +1162,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: '#F3F4F6',
   },
-  modalAnexoOptionDark: {
-    backgroundColor: '#4B5563',
-  },
   modalAnexoOptionText: {
     fontSize: 16,
     color: '#1F2937',
     marginLeft: 16,
   },
-  modalAnexoOptionTextDark: {
-    color: '#F9FAFB',
-  },
   modalAnexoCancel: {
     backgroundColor: '#E5E7EB',
     marginTop: 8,
-  },
-  modalAnexoCancelDark: {
-    backgroundColor: '#4B5563',
   },
   modalAnexoCancelText: {
     fontSize: 16,
