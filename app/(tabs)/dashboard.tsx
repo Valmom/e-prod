@@ -1,7 +1,20 @@
 import React, { useEffect, useState } from "react";
 import { Dimensions, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { G, Line, Polyline, Rect, Text as SvgText } from "react-native-svg";
-import ScreenLayout from "../../components/ScreenLayout";
+
+// Definindo tipos para os dados
+interface CardData {
+  title: string;
+  value: string;
+  legend: string;
+  color: string;
+}
+
+interface BarData {
+  valor: number;
+  atribuido: number;
+  label: string;
+}
 
 export default function Dashboard() {
   const [dailyData, setDailyData] = useState<number[]>([]);
@@ -37,6 +50,34 @@ export default function Dashboard() {
   const barWidth = 60;
   const spacing = (chartWidth - dailyData.length * barWidth) / (dailyData.length + 1);
   const chartHeight = 200;
+
+  // Dados para os cards coloridos
+  const topCardsData: CardData[] = [
+    {
+      title: "Total de alertas gerados",
+      value: "210",
+      legend: "12% em relação ao mês anterior",
+      color: "#007AFF"
+    },
+    {
+      title: "% de atendimento dentro do prazo",
+      value: "80%",
+      legend: "5% acima da meta",
+      color: "#4CAF50"
+    },
+    {
+      title: "Alertas em aberto",
+      value: "20",
+      legend: "3 a menos que ontem",
+      color: "#FFC107"
+    },
+    {
+      title: "Tempo médio de resposta",
+      value: "2,2h",
+      legend: "0,5h mais rápido que semana passada",
+      color: "#F44336"
+    }
+  ];
 
   // Primeiro gráfico vertical
   const renderVerticalChart = () => {
@@ -185,7 +226,7 @@ export default function Dashboard() {
     const metaValue = 42;
     const chartInnerHeight = 150;
 
-    const barData = [
+    const barData: BarData[] = [
       { valor: 32, atribuido: 55, label: "A" },
       { valor: 22, atribuido: 10, label: "B" },
       { valor: 34, atribuido: 11, label: "C" },
@@ -388,63 +429,65 @@ export default function Dashboard() {
     </View>
   );
 
+  // Função para renderizar os cards coloridos com coluna do meio ligeiramente menor
+  const renderTopCards = () => {
+    return (
+      <View style={styles.topCardsContainer}>
+        {/* Primeira linha */}
+        <View style={styles.topCardsRow}>
+          <View style={[styles.topCard, { backgroundColor: "#007AFF", marginRight: 8 }]}>
+            <Text style={styles.topCardTitle}>Total de alertas gerados</Text>
+            <View style={{ flex: 1, justifyContent: "center" }}>
+              <Text style={styles.topCardValue}>210</Text>
+            </View>
+            <Text style={styles.topCardLegend}>12% em relação ao mês anterior</Text>
+          </View>
+          
+          <View style={[styles.topCard, { backgroundColor: "#4CAF50", marginLeft: 4 }]}>
+            <Text style={styles.topCardTitle}>% de atendimento dentro do prazo</Text>
+            <View style={{ flex: 1, justifyContent: "center" }}>
+              <Text style={styles.topCardValue}>80%</Text>
+            </View>
+            <Text style={styles.topCardLegend}>5% acima da meta</Text>
+          </View>
+        </View>
+
+        {/* Segunda linha */}
+        <View style={styles.topCardsRow}>
+          <View style={[styles.topCard, { backgroundColor: "#FFC107", marginRight: 8 }]}>
+            <Text style={styles.topCardTitle}>Alertas em aberto</Text>
+            <View style={{ flex: 1, justifyContent: "center" }}>
+              <Text style={styles.topCardValue}>20</Text>
+            </View>
+            <Text style={styles.topCardLegend}>3 a menos que ontem</Text>
+          </View>
+          
+          <View style={[styles.topCard, { backgroundColor: "#F44336", marginLeft: 4 }]}>
+            <Text style={styles.topCardTitle}>Tempo médio de resposta</Text>
+            <View style={{ flex: 1, justifyContent: "center" }}>
+              <Text style={styles.topCardValue}>2,2h</Text>
+            </View>
+            <Text style={styles.topCardLegend}>0,5h mais rápido que semana passada</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   if (loading) return null;
 
   return (
-    <ScreenLayout title="">
-      <View 
-        style={{  
-          alignItems: "center",  
-          marginTop: 10,    
-          paddingBottom: 20, 
-        }}
-      >
-        <Text style={{ fontSize: 22, fontWeight: "700" }}>Dashboard</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Dashboard</Text>
       </View>
 
       <ScrollView 
-        style={{ flex: 1 }}   
-        contentContainerStyle={{              
-          paddingBottom: Platform.select({
-            android: 80,
-            ios: 100, 
-          }),     
-        }}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Top 4 cards */}
-        <View style={{ flexDirection: "row", justifyContent: "space-between", marginHorizontal: 10, marginBottom: 20 }}>
-          <View style={[styles.topCard, { backgroundColor: "#007AFF" }]}>
-            <Text style={styles.topCardTitle}>Total de alertas gerados</Text>
-            <View style={{ flex: 1, justifyContent: "center" }}>
-              <Text style={[styles.topCardValue, { color: "#fff" }]}>210</Text>
-            </View>
-            <Text style={[styles.topCardLegend, { color: "#fff" }]}>12% em relação ao mês anterior</Text>
-          </View>
-
-          <View style={[styles.topCard, { backgroundColor: "#4CAF50" }]}>
-            <Text style={styles.topCardTitle}>% de atendimento dentro do prazo</Text>
-            <View style={{ flex: 1, justifyContent: "center" }}>
-              <Text style={[styles.topCardValue, { color: "#fff" }]}>80%</Text>
-            </View>
-            <Text style={[styles.topCardLegend, { color: "#fff" }]}>5% acima da meta</Text>
-          </View>
-
-          <View style={[styles.topCard, { backgroundColor: "#FFC107" }]}>
-            <Text style={styles.topCardTitle}>Alertas em aberto</Text>
-            <View style={{ flex: 1, justifyContent: "center" }}>
-              <Text style={[styles.topCardValue, { color: "#fff" }]}>20</Text>
-            </View>
-            <Text style={[styles.topCardLegend, { color: "#fff" }]}>3 a menos que ontem</Text>
-          </View>
-
-          <View style={[styles.topCard, { backgroundColor: "#F44336" }]}>
-            <Text style={styles.topCardTitle}>Tempo médio de resposta</Text>
-            <View style={{ flex: 1, justifyContent: "center" }}>
-              <Text style={[styles.topCardValue, { color: "#fff" }]}>2,2h</Text>
-            </View>
-            <Text style={[styles.topCardLegend, { color: "#fff" }]}>0,5h mais rápido que semana passada</Text>
-          </View>
-        </View>
+        {/* Top 4 cards com coluna do meio ligeiramente menor */}
+        {renderTopCards()}
 
         {renderVerticalChart()}
         {renderMultiBarChart()}
@@ -453,11 +496,34 @@ export default function Dashboard() {
         {renderInfoCard("Principais responsáveis por atrasos - Tempo de resposta em horas", "")}
         {renderInfoCard("Principais responsáveis por atrasos - Quantidade de atrasos", "")}
       </ScrollView>
-    </ScreenLayout>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f7fa',
+  },
+  header: {
+    alignItems: "center",
+    marginTop: 10,
+    paddingBottom: 10,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: '#2c3e50',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: Platform.select({
+      android: 80,
+      ios: 100,
+    }),
+  },
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -488,27 +554,40 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: "center",
   },
+  // Container para os cards coloridos
+  topCardsContainer: {
+    marginHorizontal: 10,
+    marginBottom: 20,
+  },
+  topCardsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  // Cards com tamanhos iguais mas margens diferentes
   topCard: {
     flex: 1,
-    height: 160,
+    height: 150,
     borderRadius: 12,
     padding: 12,
     justifyContent: "space-between",
-    marginHorizontal: 5,
   },
   topCardTitle: {
     fontSize: 13,
     fontWeight: "700",
     color: "#fff",
+    textAlign: "center",
   },
   topCardValue: {
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: "700",
     textAlign: "center",
+    color: "#fff",
   },
   topCardLegend: {
     fontSize: 11,
     textAlign: "center",
+    color: "#fff",
   },
   chartLegend: {
     flexDirection: "row",

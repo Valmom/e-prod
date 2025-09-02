@@ -13,6 +13,7 @@ import {
   Image,
   Linking,
   Modal,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -120,20 +121,24 @@ export default function Alertas() {
   const [erroAnexo, setErroAnexo] = useState(false);
   const [cameraPermission, setCameraPermission] = useState<boolean | null>(null);
   
+  // Estado para controle de refresh
+  const [refreshing, setRefreshing] = useState(false);
+  
   // Constante para limite de fotos
   const MAX_FOTOS = 5;
   
+  // Função para buscar alertas
+  const fetchAlertas = async () => {
+    try {
+      const response = await api.get('/alertas/table-alerta');
+      setAlertas(response.data);
+    } catch (error) {
+      console.error("Erro ao buscar alertas:", error);
+      Alert.alert("Erro", "Não foi possível carregar os alertas");
+    }
+  };
+  
   useEffect(() => {
-    const fetchAlertas = async () => {
-      try {
-        const response = await api.get('/alertas/table-alerta');
-        setAlertas(response.data);
-      } catch (error) {
-        console.error("Erro ao buscar alertas:", error);
-        Alert.alert("Erro", "Não foi possível carregar os alertas");
-      }
-    };
-    
     fetchAlertas();
   }, []);
   
@@ -144,6 +149,13 @@ export default function Alertas() {
       setCameraPermission(status === 'granted');
     })();
   }, []);
+  
+  // Função para recarregar os dados quando o usuário puxar a lista
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchAlertas();
+    setRefreshing(false);
+  };
   
   const carregarHistorico = async (alertaId: string, alerta: Alerta) => {
     setLoadingHistorico(true);
@@ -291,7 +303,7 @@ export default function Alertas() {
       }
       
       // Enviar para API usando fetch
-      const response = await fetch('https://mipi.equatorialenergia.com.br/mipiapi/api/v1/alertas/justificativa', {
+      const response = await fetch('https://eprod.equatorialenergia.com.br/mipiapi/api/v1/alertas/justificativa', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -459,6 +471,37 @@ export default function Alertas() {
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        // Adicionando o controle de refresh
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#3B82F6']} // Cor do indicador de refresh
+            tintColor={'#3B82F6'} // Cor do indicador de refresh para iOS
+          />
+        }
+        // Adicionando mensagem quando não há alertas
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <MaterialIcons 
+              name="warning" 
+              size={48} 
+              color={isDark ? "#666" : "#CCC"} 
+            />
+            <Text style={[
+              styles.emptyText,
+              isDark && styles.emptyTextDark
+            ]}>
+              Nenhum alerta encontrado
+            </Text>
+            <Text style={[
+              styles.emptySubText,
+              isDark && styles.emptySubTextDark
+            ]}>
+              Puxe para atualizar a lista
+            </Text>
+          </View>
+        }
       />
       
       <Modal
@@ -929,7 +972,20 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: '#9CA3AF',
     textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  emptyTextDark: {
+    color: '#6B7280',
+  },
+  emptySubText: {
+    marginTop: 8,
+    color: '#9CA3AF',
+    textAlign: 'center',
     fontSize: 14,
+  },
+  emptySubTextDark: {
+    color: '#6B7280',
   },
   botaoJustificativa: {
     backgroundColor: '#3B82F6',

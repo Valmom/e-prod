@@ -3,7 +3,7 @@ import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 
 export const api = axios.create({
-  baseURL: "https://mipi.equatorialenergia.com.br/mipiapi/api/v1",
+  baseURL: "https://eprod.equatorialenergia.com.br/mipiapi/api/v1",
   timeout: 15000,
   headers: {
     "Content-Type": "application/json",
