@@ -31,6 +31,7 @@ export default function Login() {
     
     setLoading(true);
     try {
+       console.log("Login bem-sucedido:", username, password);
       const userData = await loginUser(username, password);
       await login(userData); // Use a ação de login do Redux
       router.replace("/(tabs)/dashboard");

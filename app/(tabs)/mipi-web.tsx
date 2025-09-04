@@ -6,7 +6,7 @@ export default function MipiWeb() {
   return (
     <ScreenLayout title="">
       <WebView
-        source={{ uri: 'https://mipi.equatorialenergia.com.br/entrar' }}
+        source={{ uri: 'https://eprod.equatorialenergia.com.br/entrar' }}
         style={styles.webView}
       />
     </ScreenLayout>

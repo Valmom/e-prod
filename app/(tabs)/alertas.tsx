@@ -23,6 +23,7 @@ import {
   View
 } from "react-native";
 const { width, height } = Dimensions.get('window');
+
 // FUNÇÕES DEFINIDAS ANTES DO COMPONENTE
 const getCardTheme = (status: string) => {
   switch (status) {
@@ -64,6 +65,7 @@ const getCardTheme = (status: string) => {
       };
   }
 };
+
 const ReturnColor = (description: string): string => {
   switch (description) {
     case 'Aprovado': return '#00b48b';
@@ -75,6 +77,7 @@ const ReturnColor = (description: string): string => {
     default: return '#038a25';
   }
 };
+
 interface Alerta {
   id: string;
   status: string;
@@ -82,21 +85,49 @@ interface Alerta {
   prefixo: string;
   dataOcorrencia: string;
   icone?: string;
+  classificacaoId?: string;
 }
+
 interface HistoricoItem {
   time: string;
   title: string;
   description: string;
   circleColor: string;
 }
-// Opções para ações corretivas
-const acoesCorretivas = [
-  "Equipe em treinamento",
-  "Problema técnico resolvido",
-  "Manutenção preventiva",
-  "Falso positivo",
-  "Outro"
+
+// Interface para as classificações
+interface Classificacao {
+  key: string;
+  value: string;
+}
+
+// Interface para as ações corretivas
+interface AcaoCorretivaAPI {
+  id: string;
+  tipoAlerta: string;
+  prefixoId: string;
+  prefixo: string;
+  dataOcorrencia: string;
+  status: string;
+  statusCor: string;
+  classificacaoId: string;
+  classificacao: string;
+  // Adicionando campos que podem conter o valor/descrição da ação
+  value?: string;
+  descricao?: string;
+  nome?: string;
+  titulo?: string;
+}
+
+// Opções padrão para ações corretivas (caso a API falhe)
+const acoesCorretivasPadrao = [
+  { key: "1", value: "Equipe em treinamento" },
+  { key: "2", value: "Problema técnico resolvido" },
+  { key: "3", value: "Manutenção preventiva" },
+  { key: "4", value: "Falso positivo" },
+  { key: "5", value: "Outro" }
 ];
+
 export default function Alertas() {
   const theme = useColorScheme();
   const isDark = theme === "dark";
@@ -106,10 +137,11 @@ export default function Alertas() {
   const [historico, setHistorico] = useState<HistoricoItem[]>([]);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
   const [alertaSelecionado, setAlertaSelecionado] = useState<Alerta | null>(null);
-  
-  // Estado para o formulário de justificativa
-  const [formData, setFormData] = useState({
+  const [alerta, setAlerta] = useState<Alerta | null>(null);
+  // Estado para o formulário de justificativa - MODIFICADO
+  const [infoEnvio, setInfoEnvio] = useState({
     acaoCorretiva: "",
+    acaoCorretivaId: "", // Adicionado para armazenar o ID da ação
     justificativa: "",
     anexoEvidencia: false
   });
@@ -127,6 +159,16 @@ export default function Alertas() {
   // Constante para limite de fotos
   const MAX_FOTOS = 5;
   
+  // Novos estados para o seletor de ação corretiva
+  const [showAcoesDropdown, setShowAcoesDropdown] = useState(false);
+  const [searchAcaoText, setSearchAcaoText] = useState("");
+  const [filteredAcoes, setFilteredAcoes] = useState<Classificacao[]>([]);
+  
+  // Estados para as APIs
+  const [classificacoes, setClassificacoes] = useState<Classificacao[]>([]);
+  const [acoesCorretivasAPI, setAcoesCorretivasAPI] = useState<AcaoCorretivaAPI[]>([]);
+  const [loadingAcoes, setLoadingAcoes] = useState(false);
+  
   // Função para buscar alertas
   const fetchAlertas = async () => {
     try {
@@ -138,8 +180,61 @@ export default function Alertas() {
     }
   };
   
+  // Função para buscar classificações
+  const fetchClassificacoes = async () => {
+    try {
+      const response = await api.get('/classificacoes');
+      setClassificacoes(response.data);
+    } catch (error) {
+      console.error("Erro ao buscar classificações:", error);
+      Alert.alert("Erro", "Não foi possível carregar as classificações");
+    }
+  };
+  
+  // Função para extrair o valor/descrição da ação corretiva
+  const extrairValorAcao = (acao: AcaoCorretivaAPI): string => {
+    // Tentar obter o valor de diferentes campos possíveis
+    return acao.value || 
+           acao.descricao || 
+           acao.nome || 
+           acao.titulo || 
+           acao.classificacao || 
+           acao.tipoAlerta || 
+           acao.status || 
+           acao.id || 
+           "Ação sem descrição";
+  };
+  
+  // Função para buscar ações corretivas com base na classificação
+  const fetchAcoesCorretivas = async (classificacaoId: string) => {
+    setLoadingAcoes(true);
+    try {
+      console.log("Buscando ações corretivas para a classificação ID:", classificacaoId);
+      const response = await api.get(`/acoes-corretivas/${classificacaoId}`);
+      console.log("Resposta da API de ações corretivas:", response.data);
+      setAcoesCorretivasAPI(response.data);
+      
+      // Extrair os valores das ações corretivas para o dropdown
+      const acoes = response.data.map((acao: AcaoCorretivaAPI) => ({
+        key: acao.id,
+        value: extrairValorAcao(acao)
+      }));
+      
+      console.log("Ações extraídas:", acoes);
+      setFilteredAcoes(acoes);
+    } catch (error) {
+      console.error("Erro ao buscar ações corretivas:", error);
+      Alert.alert("Erro", "Não foi possível carregar as ações corretivas");
+      // Fallback para as ações padrão
+      setFilteredAcoes(acoesCorretivasPadrao);
+    } finally {
+      setLoadingAcoes(false);
+    }
+  };
+  
   useEffect(() => {
     fetchAlertas();
+    fetchClassificacoes();
   }, []);
   
   useEffect(() => {
@@ -150,27 +245,66 @@ export default function Alertas() {
     })();
   }, []);
   
-  // Função para recarregar os dados quando o usuário puxar a lista
+  // Função para filtrar ações corretivas
+  useEffect(() => {
+    if (searchAcaoText.trim() === "") {
+      // Se não houver texto de busca, mostrar todas as ações
+      setFilteredAcoes(acoesCorretivasAPI.map(acao => ({
+        key: acao.id,
+        value: extrairValorAcao(acao)
+      })));
+    } else {
+      // Filtrar ações com base no texto de busca
+      const filtered = acoesCorretivasAPI
+        .map(acao => ({
+          key: acao.id,
+          value: extrairValorAcao(acao)
+        }))
+        .filter(item => item.value.toLowerCase().includes(searchAcaoText.toLowerCase()));
+      
+      setFilteredAcoes(filtered);
+    }
+  }, [searchAcaoText, acoesCorretivasAPI]);
+  
+  // Função para selecionar ação corretiva - MODIFICADA
+  const handleSelectAcao = (acao: Classificacao) => {
+    setInfoEnvio({
+      ...infoEnvio, 
+      acaoCorretiva: acao.value,
+      acaoCorretivaId: acao.key // Armazenando o ID da ação
+    });
+    setSearchAcaoText("");
+    setShowAcoesDropdown(false);
+  };
+  
+  // Função para recarregar os dados quando o usuário puxa a lista
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchAlertas();
+    await fetchClassificacoes();
     setRefreshing(false);
   };
   
   const carregarHistorico = async (alertaId: string, alerta: Alerta) => {
     setLoadingHistorico(true);
     setAlertaSelecionado(alerta);
-    setFormData({
+    setInfoEnvio({
       acaoCorretiva: "",
+      acaoCorretivaId: "",
       justificativa: "",
       anexoEvidencia: false
     });
     setMostrarFormulario(false);
     setAnexos([]);
     setErroAnexo(false);
+    setSearchAcaoText("");
+    setShowAcoesDropdown(false);
     
     try {
-      const response = await api.get('/alertas/historico-alerta?AlertaId=' + alertaId);
+      // Buscar o histórico
+      const response = await api.get('/alertas/historico-alerta', {
+        params: { AlertaId: alertaId }
+      });
       const json = response.data;
       const list = json.map((item: any) => ({
         time: item.dataOcorrencia || '',
@@ -180,6 +314,31 @@ export default function Alertas() {
       }));
       
       setHistorico(list);
+      
+      // Buscar as ações corretivas para este alerta
+      // Se as classificações ainda não foram carregadas, buscar primeiro
+      if (classificacoes.length === 0) {
+        await fetchClassificacoes();
+      }
+      
+      // Encontrar a classificação correspondente pelo value (classificação do alerta)
+      const classificacaoEncontrada = classificacoes.find(
+        c => c.value === alerta.classificacao
+      );
+      
+      console.log("Classificação do alerta:", alerta.classificacao);
+      console.log("Classificação encontrada:", classificacaoEncontrada);
+      
+      if (classificacaoEncontrada) {
+        // Usar a key encontrada para buscar as ações corretivas
+        await fetchAcoesCorretivas(classificacaoEncontrada.key);
+      } else {
+        console.log("Classificação não encontrada para:", alerta.classificacao);
+        // Se não encontrar, usar as ações padrão
+        setFilteredAcoes(acoesCorretivasPadrao);
+        setAcoesCorretivasAPI([]);
+      }
+      
       setModalVisible(true);
     } catch (error) {
       console.error("Erro ao carregar histórico:", error);
@@ -196,6 +355,9 @@ export default function Alertas() {
     setMostrarFormulario(false);
     setAnexos([]);
     setErroAnexo(false);
+    setSearchAcaoText("");
+    setShowAcoesDropdown(false);
+    setAcoesCorretivasAPI([]);
   };
   
   // FUNÇÃO PARA TIRAR FOTO - MODIFICADA PARA PERMITIR MÚLTIPLAS FOTOS
@@ -267,9 +429,70 @@ export default function Alertas() {
     }
   };
   
+  // FUNÇÃO PARA CONVERTER IMAGEM PARA BASE64
+  const converterImagemParaBase64 = async (uri: string): Promise<string> => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error("Erro ao converter imagem para base64:", error);
+      throw error;
+    }
+  };
+  //   async function saveJustification() {
+
+  //   const formData: FormData = new FormData();
+  //   const json = {
+  //     'id': alerta?.id,
+  //     'acaoCorretivaId': alerta.,
+  //     'justificativa': justification
+  //   };
+
+  //   if (imageUri !== '') {
+  //     formData.append('ImagemUpload', blob);
+  //   }
+
+  //   formData.append('command', JSON.stringify(json));
+
+  //   const config: AxiosRequestConfig = {
+  //     method: 'POST',
+  //     url: 'https://mipi.equatorialenergia.com.br/mipiapi/api/v1/alertas',
+  //     data: formData,
+  //     headers: {
+  //       'Authorization': 'Bearer ' + token,
+  //       'Content-Type': 'multipart/form-data'
+  //     }
+  //   };
+
+  //   await axios(config).then((response) => {
+  //     navigation.goBack();
+  //   }).catch(function (error)  {
+  //     if (error.response) {
+  //       // A requisição foi feita e o servidor respondeu com um código de status
+  //       // que sai do alcance de 2xx
+  //       Alert.alert('Erro', error.response.data.errors[0]);
+  //     } else if (error.request) {
+  //       // A requisição foi feita mas nenhuma resposta foi recebida
+  //       // `error.request` é uma instância do XMLHttpRequest no navegador e uma instância de
+  //       // http.ClientRequest no node.js
+  //       console.error(error.request);
+  //     } else {
+  //       // Alguma coisa acontenceu ao configurar a requisição que acionou este erro.
+  //       console.error('Error', error.message);
+  //     }
+  //     setIsLoading(false);
+  //   });      
+  // }
+
   // FUNÇÃO CORRIGIDA PARA ENVIAR JUSTIFICATIVA
   const handleEnviarJustificativa = async () => {
-    if (!formData.acaoCorretiva || !formData.justificativa) {
+    if (!infoEnvio.acaoCorretiva || !infoEnvio.justificativa) {
       Alert.alert("Atenção", "Preencha todos os campos obrigatórios");
       return;
     }
@@ -277,23 +500,24 @@ export default function Alertas() {
       setErroAnexo(true);
       return;
     }
+    
     try {
-      // Criar FormData
-      const formDataToSend = new FormData();
+      // Converter imagens para base64
+      const imagensBase64: string[] = [];
+      for (const anexo of anexos) {
+        const base64 = await converterImagemParaBase64(anexo.uri);
+        imagensBase64.push(base64);
+      }
       
-      // Dados básicos
-      formDataToSend.append('alertaId', alertaSelecionado?.id || '');
-      formDataToSend.append('acaoCorretiva', formData.acaoCorretiva);
-      formDataToSend.append('justificativa', formData.justificativa);
+      // Montar objeto de envio conforme estrutura da API
+      const dadosEnvio = {
+        id: alertaSelecionado?.id || "",
+        acaoCorretivaId: infoEnvio.acaoCorretivaId,
+        justificativa: infoEnvio.justificativa,
+        imagemUpload: imagensBase64
+      };
       
-      // Adicionar todas as fotos com nomes de campo diferentes
-      anexos.forEach((anexo, index) => {
-        formDataToSend.append(`file${index}`, {
-          uri: anexo.uri,
-          name: anexo.name,
-          type: anexo.type
-        } as any);
-      });
+      console.log("Enviando dados:", dadosEnvio);
       
       const token = await getToken();
       
@@ -302,15 +526,15 @@ export default function Alertas() {
         throw new Error("Token de autenticação não encontrado");
       }
       
-      // Enviar para API usando fetch
-      const response = await fetch('https://eprod.equatorialenergia.com.br/mipiapi/api/v1/alertas/justificativa', {
+      // Enviar para API - URL corrigida (removendo barra dupla)
+      const response = await fetch('https://eprod.equatorialenergia.com.br/mipiapi/api/v1/alertas', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
-          'Content-Type': 'multipart/form-data',
+          'Content-Type': 'application/json',
         },
-        body: formDataToSend,
+        body: JSON.stringify(dadosEnvio),
       });
       
       // Verificar o status da resposta
@@ -318,17 +542,22 @@ export default function Alertas() {
       
       if (response.ok) {
         const data = await response.json();
+        console.log("Resposta da API:", data);
         Alert.alert("Sucesso", "Justificativa enviada com sucesso!");
         
         // Resetar estados
         setMostrarFormulario(false);
-        setFormData({
+        setInfoEnvio({
           acaoCorretiva: "",
+          acaoCorretivaId: "",
           justificativa: "",
           anexoEvidencia: false
         });
         setAnexos([]);
         setErroAnexo(false);
+        setSearchAcaoText("");
+        setShowAcoesDropdown(false);
+        setAcoesCorretivasAPI([]);
         
         // Recarregar histórico
         if (alertaSelecionado) {
@@ -353,9 +582,9 @@ export default function Alertas() {
   };
   
   const toggleAnexoEvidencia = () => {
-    setFormData({
-      ...formData,
-      anexoEvidencia: !formData.anexoEvidencia
+    setInfoEnvio({
+      ...infoEnvio,
+      anexoEvidencia: !infoEnvio.anexoEvidencia
     });
   };
   
@@ -384,7 +613,8 @@ export default function Alertas() {
   
   const renderItem = ({ item }: { item: Alerta }) => {
     const themeStyle = getCardTheme(item.status);
-    
+    setAlerta(item);
+    console.log("Renderizando alerta:", item);
     return (
       <View style={[
         styles.card, 
@@ -615,34 +845,82 @@ export default function Alertas() {
                   <Text style={styles.sectionTitle}>
                     Ação Corretiva
                   </Text>
-                  <View style={styles.selectContainer}>
+                  
+                  {/* Campo de busca com dropdown */}
+                  <View style={styles.dropdownContainer}>
                     <TextInput
-                      style={styles.selectInput}
-                      value={formData.acaoCorretiva}
-                      onChangeText={(text) => setFormData({...formData, acaoCorretiva: text})}
-                      placeholder="Selecione uma ação corretiva"
+                      style={styles.dropdownInput}
+                      value={searchAcaoText}
+                      onChangeText={setSearchAcaoText}
+                      placeholder="Buscar ou selecionar ação corretiva"
                       placeholderTextColor="#6B7280"
+                      onFocus={() => setShowAcoesDropdown(true)}
+                      editable={!loadingAcoes}
                     />
+                    
+                    {loadingAcoes && (
+                      <View style={styles.loadingAcoesContainer}>
+                        <ActivityIndicator size="small" color="#3B82F6" />
+                        <Text style={styles.loadingAcoesText}>Carregando ações...</Text>
+                      </View>
+                    )}
+                    
+                    {showAcoesDropdown && !loadingAcoes && (
+                      <>
+                        <TouchableOpacity 
+                          style={styles.dropdownOverlay}
+                          onPress={() => setShowAcoesDropdown(false)}
+                        />
+                        <View style={styles.dropdownList}>
+                          <ScrollView keyboardShouldPersistTaps="handled">
+                            {filteredAcoes.length > 0 ? (
+                              filteredAcoes.map((acao, index) => (
+                                <TouchableOpacity
+                                  key={index}
+                                  style={[
+                                    styles.dropdownItem,
+                                    infoEnvio.acaoCorretiva === acao.value && styles.dropdownItemSelected
+                                  ]}
+                                  onPress={() => handleSelectAcao(acao)}
+                                >
+                                  <Text style={[
+                                    styles.dropdownItemText,
+                                    infoEnvio.acaoCorretiva === acao.value && styles.dropdownItemTextSelected
+                                  ]}>
+                                    {acao.value}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))
+                            ) : (
+                              <TouchableOpacity
+                                style={styles.dropdownItem}
+                                onPress={() => {
+                                  // Criar uma nova ação com base no texto digitado
+                                  const novaAcao = {
+                                    key: "custom",
+                                    value: searchAcaoText
+                                  };
+                                  handleSelectAcao(novaAcao);
+                                }}
+                              >
+                                <Text style={styles.dropdownItemText}>
+                                  Adicionar: "{searchAcaoText}"
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                          </ScrollView>
+                        </View>
+                      </>
+                    )}
                   </View>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.acoesContainer}>
-                    {acoesCorretivas.map((acao, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={[
-                          styles.acaoPill,
-                          formData.acaoCorretiva === acao && styles.acaoPillSelected
-                        ]}
-                        onPress={() => setFormData({...formData, acaoCorretiva: acao})}
-                      >
-                        <Text style={[
-                          styles.acaoPillText,
-                          formData.acaoCorretiva === acao && styles.acaoPillTextSelected
-                        ]}>
-                          {acao}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                  
+                  {/* Exibe a ação selecionada */}
+                  {infoEnvio.acaoCorretiva ? (
+                    <View style={styles.selectedAcaoContainer}>
+                      <Text style={styles.selectedAcaoLabel}>Ação selecionada:</Text>
+                      <Text style={styles.selectedAcaoText}>{infoEnvio.acaoCorretiva}</Text>
+                    </View>
+                  ) : null}
                 </View>
                 
                 <View style={styles.formSection}>
@@ -651,8 +929,8 @@ export default function Alertas() {
                   </Text>
                   <TextInput
                     style={styles.textArea}
-                    value={formData.justificativa}
-                    onChangeText={(text) => setFormData({...formData, justificativa: text})}
+                    value={infoEnvio.justificativa}
+                    onChangeText={(text) => setInfoEnvio({...infoEnvio, justificativa: text})}
                     placeholder="Descreva a justificativa para esta anomalia"
                     placeholderTextColor="#6B7280"
                     multiline
@@ -776,6 +1054,7 @@ export default function Alertas() {
     </ScreenLayout>
   );
 }
+
 // ESTILOS
 const styles = StyleSheet.create({
   listContainer: {
@@ -1034,10 +1313,12 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
   },
-  selectContainer: {
+  dropdownContainer: {
     position: 'relative',
+    zIndex: 10,
+    marginBottom: 8,
   },
-  selectInput: {
+  dropdownInput: {
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 8,
@@ -1046,26 +1327,67 @@ const styles = StyleSheet.create({
     color: '#111827',
     backgroundColor: '#FFF',
   },
-  acoesContainer: {
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 1,
+  },
+  dropdownList: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    maxHeight: 200,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    zIndex: 2,
+  },
+  dropdownItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#EBF5FF',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  dropdownItemTextSelected: {
+    fontWeight: '600',
+    color: '#1D4ED8',
+  },
+  selectedAcaoContainer: {
     marginTop: 8,
-    marginBottom: 8,
+    padding: 10,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 6,
+    borderLeftWidth: 4,
+    borderLeftColor: '#3B82F6',
   },
-  acaoPill: {
-    backgroundColor: '#E5E7EB',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-  },
-  acaoPillSelected: {
-    backgroundColor: '#3B82F6',
-  },
-  acaoPillText: {
-    color: '#4B5563',
+  selectedAcaoLabel: {
     fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 2,
   },
-  acaoPillTextSelected: {
-    color: '#FFF',
+  selectedAcaoText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1E40AF',
   },
   textArea: {
     borderWidth: 1,
@@ -1121,11 +1443,20 @@ const styles = StyleSheet.create({
   anexosContainer: {
     marginTop: 12,
     alignItems: 'flex-start',
+    // Garantir que o conteúdo não seja cortado
+    overflow: 'visible',
+    // Adicionar espaçamento extra
+    paddingBottom: 8,
   },
   anexoItem: {
     position: 'relative',
-    marginRight: 10,
-    marginBottom: 10,
+    marginRight: 20, // Aumentar significativamente o espaço entre as fotos
+    marginBottom: 20, // Aumentar significativamente o espaço vertical
+    // Adicionar padding para garantir espaço para o botão
+    paddingTop: 12,
+    paddingRight: 12,
+    // Garantir que o conteúdo não seja cortado
+    overflow: 'visible',
   },
   fotoPreview: {
     width: 100,
@@ -1134,19 +1465,31 @@ const styles = StyleSheet.create({
   },
   removerFotoButton: {
     position: 'absolute',
-    top: -8,
-    right: -8,
+    top: -8, // Mover mais para cima
+    right: -8, // Mover mais para a direita
     backgroundColor: '#EF4444',
     borderRadius: 12,
     width: 24,
     height: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    // Adicionar borda para melhor visibilidade
+    borderWidth: 2,
+    borderColor: '#FFF',
+    // Adicionar sombra para melhor destaque
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
+    // Garantir que o botão esteja acima de tudo
+    zIndex: 10,
+    margin: 8,
   },
   fotoInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 12, // Aumentar o espaçamento superior
   },
   fotoInfo: {
     fontSize: 12,
@@ -1231,5 +1574,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#3B82F6',
     fontWeight: '500',
+  },
+  loadingAcoesContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 3,
+    borderRadius: 8,
+  },
+  loadingAcoesText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#6B7280',
   },
 });
