@@ -32,7 +32,6 @@ function CircleIcon({ children, focused }: CircleIconProps) {
 
 export default function TabsLayout() {
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
   const insets = useSafeAreaInsets();
   const segments = useSegments();
 
@@ -44,11 +43,9 @@ export default function TabsLayout() {
 
   return (
     <>
-        <StatusBar
-          style={"dark"}
-        />
+        <StatusBar />
         <ThemeProvider value={DarkTheme}>
-          <Tabs
+          {/* <Tabs
             screenOptions={{
               animation: "fade",
               tabBarShowLabel: false,
@@ -65,7 +62,7 @@ export default function TabsLayout() {
                 marginLeft: (width - TABBAR_WIDTH) / 2,
                 height: 48,
                 borderRadius: 12,
-                backgroundColor: "rgba(0, 0, 0, 0.7)",
+                backgroundColor: "rgba(0, 0, 0, 0.9)",
                 shadowColor: "#000",
                 shadowOpacity: 0.15,
                 shadowOffset: { width: 0, height: 4 },
@@ -146,11 +143,88 @@ export default function TabsLayout() {
                   <CircleIcon focused={focused} color={color}>
                     <Ionicons name="person-circle-outline" size={size} color="#fff" />
                   </CircleIcon>
+                ),                
+              }}
+            />         
+          </Tabs> */}
+          <Tabs
+            initialRouteName="alertas"
+            screenOptions={{
+              animation: "fade",
+              tabBarShowLabel: false,
+              tabBarActiveTintColor: activeTintColor,
+              tabBarInactiveTintColor: inactiveTintColor,
+              headerShown: false,
+              tabBarStyle: {
+                position: "absolute",
+                bottom: Platform.select({
+                  android: insets.bottom,
+                  ios: Math.max(insets.bottom, 24),
+                }),
+                width: TABBAR_WIDTH,
+                marginLeft: (width - TABBAR_WIDTH) / 2,
+                height: 48,
+                borderRadius: 12,
+                backgroundColor: "rgba(0, 0, 0, 0.9)",
+                shadowColor: "#000",
+                shadowOpacity: 0.15,
+                shadowOffset: { width: 0, height: 4 },
+                shadowRadius: 10,
+                paddingTop: Platform.select({
+                  android: 8,
+                  ios: 5,
+                }),
+                marginBottom: Platform.select({
+                  android: 10,
+                  ios: 0,
+                }),
+                paddingBottom: insets.bottom,
+                elevation: 10,
+                borderWidth: 0,
+              },
+            }}
+          >
+            {/* MIPI WEB (esquerda) */}
+            <Tabs.Screen
+              name="mipi-web"
+              options={{
+                tabBarIcon: ({ focused, color, size }) => (
+                  <CircleIcon focused={focused} color={color}>
+                    <AntDesign name="earth" size={size} color="#fff" />
+                  </CircleIcon>
                 ),
               }}
             />
+            {/* Escondidos (não aparecem no tab bar, mas acessíveis via navegação) */}
+            <Tabs.Screen name="dashboard" options={{ tabBarButton: () => null }} />
+            {/* ALERTAS (botão central flutuante) */}
             <Tabs.Screen
-              name="historico"              
+              name="alertas"
+              options={{
+                tabBarIcon: () => null,
+                tabBarButton: ({ onPress }) => (
+                  <TouchableOpacity
+                    onPress={onPress}
+                    style={[
+                      styles.centralButton,
+                      {
+                        backgroundColor: "rgba(0, 0, 0, 0.9)",
+                        position: "absolute",
+                        top: -24,
+                        alignSelf: "center", // força centralização
+                        zIndex: 1,
+                      },
+                    ]}
+                  >
+                    <AntDesign name="warning" size={32} color="#fff" />
+                  </TouchableOpacity>
+                ),
+              }}
+            />
+          <Tabs.Screen name="documentos" options={{ tabBarButton: () => null }} />
+            {/* PERFIL (direita) */}
+            <Tabs.Screen
+              name="perfil"
               options={{
                 tabBarIcon: ({ focused, color, size }) => (
                   <CircleIcon focused={focused} color={color}>
@@ -158,8 +232,10 @@ export default function TabsLayout() {
                   </CircleIcon>
                 ),
               }}
-            />            
+            />
+            
           </Tabs>
+
         </ThemeProvider>
     </>
   );

@@ -1,12 +1,24 @@
 // _layout.tsx
+import { registerForPushNotificationsAsync } from '@/utils/notifications';
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import * as Notifications from 'expo-notifications';
 import { Stack, useRouter, useSegments } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useColorScheme } from "react-native";
 import { Provider } from "react-redux";
 import { AuthLoader } from "../components/AuthLoader"; // Importe o AuthLoader
 import { store } from "../store";
 import { useAppSelector } from "../store/hooks"; // Importe o hook
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,    
+  }),
+});
 
 export default function RootLayout() {
   return (
@@ -27,6 +39,30 @@ function Layout() {
   const theme = colorScheme === "dark" ? DarkTheme : DefaultTheme;
   const [isNavigationReady, setIsNavigationReady] = useState(false);
   const [splashShown, setSplashShown] = useState(false);
+  const notificationListener = useRef<any>(null);
+  const responseListener = useRef<any>(null);
+
+  useEffect(() => {
+    registerForPushNotificationsAsync().then(token => {
+      // Salve o token no backend se necessário
+      //console.log("Expo Push Token:", token);
+    });
+
+    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+      // Notificação recebida em foreground
+      console.log("Notificação recebida:", notification);
+    });
+
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+      // Usuário interagiu com a notificação
+      console.log("Resposta à notificação:", response);
+    });
+
+    return () => {
+      Notifications.removeNotificationSubscription(notificationListener.current);
+      Notifications.removeNotificationSubscription(responseListener.current);
+    };
+  }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => {

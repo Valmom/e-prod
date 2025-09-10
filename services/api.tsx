@@ -1,4 +1,3 @@
-// services/api.ts
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 
@@ -17,7 +16,6 @@ api.interceptors.request.use(
 
       if (stored) {
         const userData = JSON.parse(stored);
-
         if (userData?.accessToken) {
           config.headers.Authorization = `Bearer ${userData.accessToken}`;
         }
@@ -32,3 +30,8 @@ api.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
+export const eprodapi = axios.create({
+  baseURL: "https://eprod.equatorialenergia.com.br/eprodapi",
+  timeout: 15000
+});

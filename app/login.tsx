@@ -1,5 +1,4 @@
-// screens/Login.tsx
-import { useAuth } from "@/hooks/useAuth"; // Importe o novo hook de autenticação
+import { useAuth } from "@/hooks/useAuth";
 import { loginUser } from "@/services/authService";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from "expo-router";
@@ -31,10 +30,9 @@ export default function Login() {
     
     setLoading(true);
     try {
-       console.log("Login bem-sucedido:", username, password);
-      const userData = await loginUser(username, password);
-      await login(userData); // Use a ação de login do Redux
-      router.replace("/(tabs)/dashboard");
+      const userData = await loginUser(username.trim(), password.trim());
+      await login(userData);
+      router.replace("/(tabs)/alertas");
     } catch (err) {
       console.error("Erro no login:", err);
     } finally {

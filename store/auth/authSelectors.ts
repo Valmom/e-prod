@@ -1,4 +1,3 @@
-// store/auth/authSelectors.ts
 import { RootState } from '../index';
 
 export const selectUser = (state: RootState) => state.auth.user;

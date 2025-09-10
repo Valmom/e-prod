@@ -56,3 +56,7 @@ export const GlobalStyle = StyleSheet.create({
     marginBottom: 12,    
   }
 });
+
+export const AlertStyle = StyleSheet.create({
+
+});

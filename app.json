@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "mipiApp",
-    "slug": "mipiApp",
-    "version": "1.0.0",
+    "name": "E-PROD",
+    "slug": "e-prod",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mipiapp",
@@ -16,7 +16,9 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "usesCleartextTraffic": true,
+      "package": "com.valmont1976.mipiApp"
     },
     "web": {
       "bundler": "metro",
@@ -42,7 +44,14 @@
     "extra": {
       "router": {
         "initialRouteName": "splash"
+      },
+      "eas": {
+        "projectId": "9a3b278d-5ceb-45aa-8a26-8166a03a9e9c"
       }
-    }    
+    },
+    "networkTimeout": {
+      "request": 30000,
+      "upload": 30000
+    }
   }
 }

@@ -1,4 +1,3 @@
-// store/auth/authSlice.ts
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import * as SecureStore from 'expo-secure-store';
 import { UserData } from '../../types/UserData';
