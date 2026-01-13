@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "eProd",
-    "slug": "eProd",
+    "name": "E-PROD",
+    "slug": "eprod",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -13,13 +13,13 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff" 
+      },      
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.valmont1976.eProd",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -43,6 +43,14 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "initialRouteName": "splash"
+      },
+      "eas": {
+        "projectId": "0b14a9ea-8428-4f25-8010-e2cb5ca5242d"
+      }
     }
   }
 }

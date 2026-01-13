@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "192913260679",
+    "project_id": "eprod-9f75d",
+    "storage_bucket": "eprod-9f75d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:192913260679:android:4534d2fdcbda4a2775b822",
+        "android_client_info": {
+          "package_name": "com.valmont1976.eProd"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNhHydrdG6kdqKebEeMrUxxC63tVD7cqY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
