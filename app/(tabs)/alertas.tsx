@@ -3,9 +3,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { eprodapi } from "@/services/api";
 import { setAlerta } from "@/store/alertaSlice";
 import { getAccessToken, isTokenExpired } from "@/utils/auth";
+import * as SecureStore from "expo-secure-store";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -97,12 +97,11 @@ export default function Alertas() {
         Authorization: `Bearer ${tokenEprod}`,
         "Content-Type": "application/json",
       };
-
+      const url = `/v1/mobile/alerts?user=${user?.userName}`;
       setLoading(true);
-      const response = await eprodapi.get(`/v1/mobile/alerts?user=${user?.userName}`, { headers });
-      console.log(response.data);
+      const response = await eprodapi.get(url, { headers });
       setAlertas(response.data);
-    } catch (error) {
+    } catch (error: any) {
       showMessage({
         message: "Erro",
         description: "Não foi possível carregar os alertas",
@@ -132,10 +131,12 @@ export default function Alertas() {
         router.replace("/login");
         return;
       }
-      await fetchAlertas();
+      if (user?.userName) {
+        await fetchAlertas();
+      }
     }
     init();
-  }, []);
+  }, [user]);
 
   // ---- render de cada item ----
   const renderItem = ({ item }: { item: Alerta }) => {

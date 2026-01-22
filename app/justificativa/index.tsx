@@ -39,18 +39,13 @@ interface HistoricoItem {
 }
 
 interface AcaoCorretivaAPI {
-  id: string;
-  codigo: string;
-  value?: string;
-  descricao?: string;
-  nome?: string;
-  titulo?: string;
-  classificacao?: string;
+  ID: string;
+  DESCRICAO: string;
 }
 
 interface Classificacao {
-  key: string;
-  value: string;
+  ID: string;
+  CLASSIFICACAO: string;
 }
 
 interface FotoComLoading {
@@ -135,24 +130,30 @@ export default function JustificativaScreen() {
     }
   }, [alertaRedux]);
 
+
   const fetchClassificacoes = useCallback(async () => {
     try {
-      const response = await api.get('/classificacoes');
+      const tokenEprod = await SecureStore.getItemAsync("eprod-token");
+      const response = await eprodapi.get('/v1/alert/classificacao', {
+        headers: { Authorization: `Bearer ${tokenEprod}` }
+      });
       setClassificacoes(response.data);
       return response.data;
     } catch (error) {
       console.error('Erro ao buscar classificações:', error);
-      showMessage({ 
-        message: "Erro", 
-        description: 'Não foi possível carregar as classificações', 
-        type: "danger" 
+      console.error(error);
+      showMessage({
+        message: "Erro",
+        description: 'Não foi possível carregar as classificações',
+        type: "danger"
       });
       return [];
     }
   }, []);
 
+
   const extrairValorAcao = (acao: AcaoCorretivaAPI) => {
-    return acao.value || acao.descricao || acao.nome || acao.titulo || acao.classificacao || "Ação sem descrição";
+    return  acao.DESCRICAO || "Ação sem descrição";
   };
 
   const fetchAcoesCorretivas = useCallback(async (classificacaoId: string) => {
@@ -162,7 +163,11 @@ export default function JustificativaScreen() {
     }
     setLoadingAcoes(true);
     try {
-      const response = await api.get(`/acoes-corretivas/${classificacaoId}`);
+      const tokenEprod = await SecureStore.getItemAsync("eprod-token");
+      const response = await eprodapi.get(`/v1/mobile/correction-actions/${classificacaoId}`,{
+        headers: { Authorization: `Bearer ${tokenEprod}` }
+      });
+      console.log("ações corretivas:", response.data);
       setAcoesCorretivasAPI(response.data);
     } catch (error) {
       console.error('Erro ao buscar ações corretivas:', error);
@@ -189,7 +194,7 @@ export default function JustificativaScreen() {
       }
       const response = await eprodapi.get('/v1/alert/timeline', { 
         params: { alertId: alertaId }, 
-        headers: { Authorization: `Bearer ${tokenEprod}` } 
+        headers: { Authorization: `Bearer ${tokenEprod}` }
       });
       const list: HistoricoItem[] = response.data.map((item: any) => ({
         time: item.DATA,
@@ -222,11 +227,11 @@ export default function JustificativaScreen() {
       try {
         const classificacoesData = await fetchClassificacoes();
         const classificacaoEncontrada = classificacoesData.find(
-          (c: Classificacao) => c.value === alertaSelecionado.classificacao
+          (c: Classificacao) => c.CLASSIFICACAO === alertaSelecionado.classificacao
         );
         if (classificacaoEncontrada) {
           setClassificacao(classificacaoEncontrada);
-          await fetchAcoesCorretivas(classificacaoEncontrada.key);
+          await fetchAcoesCorretivas(classificacaoEncontrada.ID);
         } else {
           console.warn('Classificação não encontrada para:', alertaSelecionado.classificacao);
           if (alertaSelecionado.classificacaoId) {
@@ -295,53 +300,62 @@ export default function JustificativaScreen() {
 
   const abrirCamera = async () => {
     if (fotos.length >= MAX_FOTOS) {
-      showMessage({ 
-        message: "Limite atingido", 
-        description: `Máximo de ${MAX_FOTOS} fotos permitidas`, 
-        type: "warning" 
+      showMessage({
+        message: "Limite atingido",
+        description: `Máximo de ${MAX_FOTOS} fotos permitidas`,
+        type: "warning"
       });
       return;
     }
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      showMessage({ 
-        message: "Permissão necessária", 
-        description: 'É necessário permitir o acesso à câmera', 
-        type: "warning" 
-      });
-      return;
-    }
-    setProcessandoFoto(true);
+
     try {
-      const result = await ImagePicker.launchCameraAsync({ 
-        mediaTypes: 'images', 
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        showMessage({
+          message: "Permissão necessária",
+          description: 'É necessário permitir o acesso à câmera',
+          type: "warning"
+        });
+        return;
+      }
+
+      setProcessandoFoto(true);
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: 'images',
         quality: 0.8,
         allowsEditing: false
       });
+
       if (!result.canceled && result.assets?.length > 0) {
-        const novaFoto: FotoComLoading = { 
-          uri: result.assets[0].uri, 
-          type: "image/jpeg", 
+        const novaFoto: FotoComLoading = {
+          uri: result.assets[0].uri,
+          type: "image/jpeg",
           name: `foto_${Date.now()}.jpg`,
           id: `foto_${Date.now()}`,
           loading: true
         };
         setFotos(prev => [...prev, novaFoto]);
         timeoutRef.current = setTimeout(() => {
-          setFotos(prev => 
-            prev.map(foto => 
-              foto.id === novaFoto.id 
+          setFotos(prev =>
+            prev.map(foto =>
+              foto.id === novaFoto.id
                 ? { ...foto, loading: false }
                 : foto
             )
           );
         }, 1500);
       }
-    } catch (error) {
-      console.error('Erro ao capturar foto:', error);
+    } catch (error: any) {
+      console.error('Erro ao abrir câmera:', error);
+      console.error('Detalhes do erro:', {
+        message: error?.message,
+        code: error?.code,
+        name: error?.name,
+        stack: error?.stack
+      });
       showMessage({
         message: "Erro",
-        description: "Falha ao capturar a foto",
+        description: error?.message || "Falha ao abrir a câmera",
         type: "danger"
       });
     } finally {
@@ -404,10 +418,10 @@ export default function JustificativaScreen() {
       const requestDTO = {
         acaoCorretivaId: acaoCorretivaId,
         alertaId: alertaSelecionado.id,
-        classificacaoId: classificacao?.key || alertaSelecionado.classificacaoId,
+        classificacaoId: classificacao?.ID || alertaSelecionado.classificacaoId,
         prefixoId: alertaSelecionado.prefixoId,
         justificativa,
-        tipoAlerta: classificacao?.value || alertaSelecionado.classificacao,
+        tipoAlerta: classificacao?.CLASSIFICACAO || alertaSelecionado.classificacao,
         usuarioId: userData.id,
       };
       const photosUris = fotos.map(image => image.uri);
@@ -619,7 +633,7 @@ export default function JustificativaScreen() {
             onValueChange={setAcaoCorretivaId}
             items={acoesCorretivasAPI.map(a => ({ 
               label: extrairValorAcao(a), 
-              value: a.codigo
+              value: a.DESCRICAO
             }))}
             placeholder={{ label: "Selecione uma ação corretiva", value: null }}
             style={pickerSelectStyles}
